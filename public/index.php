@@ -460,12 +460,18 @@ if ($route === 'admin') {
                 <button id="saveBtn" class="mt-2 bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
             </main>
         </div>
-        <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
+        <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null };
             const csrfToken = <?= json_encode($csrfToken) ?>;
-            const treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
+            const TREE_NOTE_SELECTOR = 'button[data-note]';
+            let treeFiles = [];
+            try {
+                treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
+            } catch (error) {
+                console.error('Invalid tree data JSON payload.', error);
+            }
 
             async function api(payload) {
                 const body = new URLSearchParams({ ...payload, csrf: csrfToken });
@@ -576,7 +582,7 @@ if ($route === 'admin') {
             }
 
             function highlightActiveTreeNote() {
-                const buttons = document.querySelectorAll('#tree [data-note]');
+                const buttons = document.querySelectorAll(`#tree ${TREE_NOTE_SELECTOR}`);
                 buttons.forEach((btn) => {
                     const active = btn.dataset.note === state.activeNote;
                     btn.classList.toggle('is-active', active);
@@ -629,7 +635,7 @@ if ($route === 'admin') {
             }
 
             document.getElementById('tree').addEventListener('click', (event) => {
-                const target = event.target.closest('button[data-note]');
+                const target = event.target.closest(TREE_NOTE_SELECTOR);
                 if (!target) return;
                 openNote(target.dataset.note);
             });
