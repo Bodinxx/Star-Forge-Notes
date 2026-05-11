@@ -6,6 +6,7 @@ const ROOT_PATH = __DIR__ . '/..';
 const DATA_PATH = ROOT_PATH . '/data';
 const USERS_FILE = DATA_PATH . '/users.json';
 const VAULTS_PATH = ROOT_PATH . '/vaults';
+const MIN_PASSWORD_LENGTH = 8;
 
 function app_bootstrap(): void
 {
@@ -46,6 +47,21 @@ function write_users(array $users): void
 function current_user(): ?array
 {
     return $_SESSION['user'] ?? null;
+}
+
+function is_password_change_required(): bool
+{
+    return (bool) (current_user()['force_password_change'] ?? false);
+}
+
+function set_session_user(array $user): void
+{
+    $_SESSION['user'] = [
+        'id' => $user['id'],
+        'username' => $user['username'],
+        'role' => $user['role'] ?? 'user',
+        'force_password_change' => (bool) ($user['force_password_change'] ?? false),
+    ];
 }
 
 function csrf_token(): string
@@ -92,6 +108,39 @@ function find_user_by_username(string $username): ?array
     return null;
 }
 
+function find_user_by_id(string $userId): ?array
+{
+    foreach (read_users() as $user) {
+        if (($user['id'] ?? '') === $userId) {
+            return $user;
+        }
+    }
+    return null;
+}
+
+function set_user_password(string $userId, string $password, bool $forcePasswordChange): bool
+{
+    $users = read_users();
+    $updated = false;
+
+    foreach ($users as &$user) {
+        if (($user['id'] ?? '') !== $userId) {
+            continue;
+        }
+        $user['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        $user['force_password_change'] = $forcePasswordChange;
+        $updated = true;
+        break;
+    }
+    unset($user);
+
+    if ($updated) {
+        write_users($users);
+    }
+
+    return $updated;
+}
+
 function login_user(string $username, string $password): ?string
 {
     $user = find_user_by_username(trim($username));
@@ -102,11 +151,7 @@ function login_user(string $username, string $password): ?string
         return 'Your account is pending admin approval.';
     }
 
-    $_SESSION['user'] = [
-        'id' => $user['id'],
-        'username' => $user['username'],
-        'role' => $user['role'] ?? 'user',
-    ];
+    set_session_user($user);
 
     ensure_vault($user['id']);
     return null;
@@ -118,8 +163,8 @@ function request_account(string $username, string $password): ?string
     if (!preg_match('/^[a-z0-9_\-]{3,30}$/', $username)) {
         return 'Username must be 3-30 chars: letters, numbers, _ or -.';
     }
-    if (strlen($password) < 8) {
-        return 'Password must be at least 8 characters.';
+    if (strlen($password) < MIN_PASSWORD_LENGTH) {
+        return 'Password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.';
     }
 
     $users = read_users();

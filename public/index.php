@@ -22,9 +22,44 @@ if ($route === 'login' && $method === 'POST') {
         verify_csrf($_POST['csrf'] ?? null);
         $error = login_user($_POST['username'] ?? '', $_POST['password'] ?? '');
         if ($error === null) {
-            header('Location: ?route=app');
+            header('Location: ?route=' . (is_password_change_required() ? 'change-password' : 'app'));
             exit;
         }
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
+    }
+}
+
+if ($route === 'change-password' && $method === 'POST') {
+    require_auth();
+    try {
+        verify_csrf($_POST['csrf'] ?? null);
+        $currentPassword = $_POST['current_password'] ?? '';
+        $newPassword = $_POST['new_password'] ?? '';
+        $confirmPassword = $_POST['confirm_password'] ?? '';
+
+        if (strlen($newPassword) < MIN_PASSWORD_LENGTH) {
+            throw new RuntimeException('New password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.');
+        }
+        if ($newPassword !== $confirmPassword) {
+            throw new RuntimeException('New password and confirmation do not match.');
+        }
+
+        $activeUser = current_user();
+        $record = $activeUser ? find_user_by_id($activeUser['id']) : null;
+        if (!$record || !password_verify($currentPassword, $record['password_hash'] ?? '')) {
+            throw new RuntimeException('Current password is incorrect.');
+        }
+        if (!set_user_password($record['id'], $newPassword, false)) {
+            throw new RuntimeException('Unable to update password.');
+        }
+
+        $updatedRecord = find_user_by_id($record['id']);
+        if ($updatedRecord) {
+            set_session_user($updatedRecord);
+        }
+        $message = 'Password updated.';
+        $route = 'app';
     } catch (Throwable $e) {
         $error = $e->getMessage();
     }
@@ -55,6 +90,8 @@ if ($route === 'admin-action' && $method === 'POST') {
     $users = read_users();
     $userId = trim($_POST['user_id'] ?? '');
     $action = trim($_POST['action'] ?? '');
+    $defaultPassword = trim($_POST['default_password'] ?? '');
+    $adminActionError = null;
 
     foreach ($users as &$u) {
         if (($u['id'] ?? '') !== $userId || $u['id'] === 'admin') {
@@ -70,12 +107,24 @@ if ($route === 'admin-action' && $method === 'POST') {
         } elseif ($action === 'delete') {
             $u['__delete'] = true;
             $message = "Deleted {$u['username']}";
+        } elseif ($action === 'reset-password') {
+            if (strlen($defaultPassword) < MIN_PASSWORD_LENGTH) {
+                $adminActionError = 'Default password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.';
+            } else {
+                $u['password_hash'] = password_hash($defaultPassword, PASSWORD_DEFAULT);
+                $u['force_password_change'] = true;
+                $u['status'] = 'active';
+                $message = "Password reset for {$u['username']}";
+            }
         }
+        break;
     }
     unset($u);
 
-    $users = array_values(array_filter($users, static fn($u) => !isset($u['__delete'])));
-    write_users($users);
+    if ($adminActionError === null) {
+        $users = array_values(array_filter($users, static fn($u) => !isset($u['__delete'])));
+        write_users($users);
+    }
 
     if ($action === 'delete' && $userId !== '') {
         $vault = user_vault_path($userId);
@@ -91,7 +140,7 @@ if ($route === 'admin-action' && $method === 'POST') {
         }
     }
 
-    header('Location: ?route=admin&msg=' . urlencode($message ?? 'Updated'));
+    header('Location: ?route=admin&msg=' . urlencode($adminActionError ?? $message ?? 'Updated'));
     exit;
 }
 
@@ -152,6 +201,11 @@ if (!$user && !in_array($route, ['login', 'register'], true)) {
     exit;
 }
 
+if ($user && ($user['force_password_change'] ?? false) && !in_array($route, ['change-password', 'logout'], true)) {
+    header('Location: ?route=change-password');
+    exit;
+}
+
 if ($route === 'admin') {
     require_admin();
 }
@@ -205,6 +259,18 @@ if ($route === 'admin') {
                 <p class="text-sm mt-2"><a class="text-indigo-700" href="?route=login">Back to Login</a></p>
             <?php endif; ?>
         </div>
+    <?php elseif ($route === 'change-password'): ?>
+        <div class="max-w-md mx-auto bg-white rounded shadow p-4">
+            <h2 class="text-xl font-semibold mb-3">Change Password</h2>
+            <p class="text-sm text-amber-700 mb-3">You must set a new password before continuing.</p>
+            <form method="post" action="?route=change-password" class="space-y-2">
+                <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                <input class="w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" aria-label="Current password" required>
+                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" aria-label="New password" required>
+                <input class="w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" aria-label="Confirm new password" required>
+                <button class="w-full bg-indigo-600 text-white rounded p-2">Update Password</button>
+            </form>
+        </div>
 
     <?php elseif ($route === 'admin'): ?>
         <?php $adminMsg = $_GET['msg'] ?? null; if ($adminMsg): ?><div class="mb-3 p-2 bg-indigo-100 border border-indigo-300 rounded"><?= htmlspecialchars($adminMsg) ?></div><?php endif; ?>
@@ -229,6 +295,12 @@ if ($route === 'admin') {
                                     <button class="px-2 py-1 bg-emerald-600 text-white rounded" name="action" value="approve" type="submit">Approve</button>
                                     <button class="px-2 py-1 bg-amber-600 text-white rounded" name="action" value="disable" type="submit">Disable</button>
                                     <button class="px-2 py-1 bg-rose-600 text-white rounded" name="action" value="delete" type="submit" onclick="return confirm('Delete user and vault?')">Delete</button>
+                                </form>
+                                <form method="post" action="?route=admin-action" class="inline-flex gap-1 mt-1">
+                                    <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['id']) ?>">
+                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
+                                    <input class="border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" aria-label="Default reset password" required>
+                                    <button class="px-2 py-1 bg-indigo-600 text-white rounded" name="action" value="reset-password" type="submit">Reset Password</button>
                                 </form>
                                 <?php endif; ?>
                             </td>

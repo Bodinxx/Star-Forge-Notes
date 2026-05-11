@@ -71,7 +71,7 @@ This repository now includes a first-draft implementation based on the requireme
 - Per-user vault directories under `/vaults/{user_id}/`
 - Markdown note create/load/save with `structure.json` indexing
 - Basic tree list, full-text search (global/folder), and tag cloud from frontmatter
-- Admin panel for approve/disable/delete user accounts and vault size audit
+- Admin panel for approve/disable/delete/reset-password user actions and vault size audit
 - Tailwind-based UI and Vditor integration (CDN)
 - `.htaccess` protections in `/data` and `/vaults`
 
@@ -94,6 +94,8 @@ Then open:
 ### Draft Admin Access
 For initial testing:
 - Username: `admin`
-- Password: `admin123!`
+- Password: `admin`
 
-Change this credential in `data/users.json` before any real deployment.
+The seeded admin account is forced to change password on first login.
+Any user password reset from the admin panel is also marked for forced change on next login.
+Change these defaults before any real deployment.
