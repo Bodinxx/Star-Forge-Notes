@@ -1010,7 +1010,9 @@ if (is_file($siteLogoPath) && is_readable($siteLogoPath)) {
                     .sort((a, b) => {
                         const countDiff = Number(b[1]) - Number(a[1]);
                         if (countDiff !== 0) return countDiff;
-                        return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' });
+                        const ciDiff = String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' });
+                        if (ciDiff !== 0) return ciDiff;
+                        return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'variant' });
                     })
                     .forEach(([tag, count]) => {
                     const btn = document.createElement('button');
