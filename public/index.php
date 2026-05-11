@@ -675,7 +675,7 @@ if ($route === 'admin') {
             const AUTOSAVE_DEBOUNCE_MS = 1200;
             const LAST_SAVED_TIMEZONE = 'America/Phoenix';
             const LAST_SAVED_LABEL = 'MST';
-            const ARCHIVE_FOLDER_NAME = <?= json_encode(ARCHIVE_FOLDER_NAME) ?>;
+            const JS_ARCHIVE_FOLDER_NAME = <?= json_encode(ARCHIVE_FOLDER_NAME) ?>;
             let treeFiles = [];
             let treeFolders = [];
             try {
@@ -735,8 +735,8 @@ if ($route === 'admin') {
             }
 
             function folderSortCompare(left, right) {
-                const leftIsArchive = left.toLowerCase() === ARCHIVE_FOLDER_NAME.toLowerCase();
-                const rightIsArchive = right.toLowerCase() === ARCHIVE_FOLDER_NAME.toLowerCase();
+                const leftIsArchive = left.toLowerCase() === JS_ARCHIVE_FOLDER_NAME.toLowerCase();
+                const rightIsArchive = right.toLowerCase() === JS_ARCHIVE_FOLDER_NAME.toLowerCase();
                 if (leftIsArchive && !rightIsArchive) return 1;
                 if (!leftIsArchive && rightIsArchive) return -1;
                 return caseInsensitiveCompare(left, right);
@@ -1103,7 +1103,7 @@ if ($route === 'admin') {
                 if (state.activeNote === path && state.isDirty) {
                     await saveCurrent();
                     if (state.isDirty) {
-                        alert('Archive canceled because the note could not be saved.');
+                        alert('Cannot archive: note has unsaved changes that failed to save.');
                         return;
                     }
                 }
@@ -1131,7 +1131,7 @@ if ($route === 'admin') {
                 if (state.activeNote === path && state.isDirty) {
                     await saveCurrent();
                     if (state.isDirty) {
-                        alert('Delete canceled because the note could not be saved.');
+                        alert('Cannot delete: note has unsaved changes that failed to save.');
                         return;
                     }
                 }
