@@ -297,7 +297,7 @@ if ($route === 'admin') {
             --sf-input-bg: #082f49; --sf-tag-bg: #075985; --sf-tag-text: #e0f2fe; --sf-link: #93c5fd; color-scheme: dark;
         }
         body.theme-page { background: var(--sf-bg); color: var(--sf-text); }
-        .theme-container { --sf-shell-padding: 20px; min-height: 100vh; padding: var(--sf-shell-padding); }
+        .theme-container { --sf-shell-padding: 20px; height: 100vh; height: 100dvh; padding: var(--sf-shell-padding); display: flex; flex-direction: column; overflow-y: auto; box-sizing: border-box; }
         .theme-panel { background: var(--sf-panel); color: var(--sf-text); border: 1px solid var(--sf-border); }
         .theme-input { background: var(--sf-input-bg); color: var(--sf-text); border-color: var(--sf-border); }
         .theme-muted { color: var(--sf-muted); }
@@ -316,7 +316,18 @@ if ($route === 'admin') {
         .tree-note-button { display: inline-flex; align-items: center; gap: 6px; width: 100%; text-align: left; border-radius: 4px; padding: 2px 4px; }
         .tree-note-button:hover, .tree-folder > summary:hover { background: color-mix(in srgb, var(--sf-tag-bg) 55%, transparent); }
         .tree-note-button.is-active { background: color-mix(in srgb, var(--sf-tag-bg) 85%, transparent); font-weight: 600; }
-        #vditor { min-height: 60vh; }
+        /* Full-viewport app layout */
+        #appGrid { flex: 1; min-height: 0; grid-template-rows: 1fr; overflow: hidden; align-items: stretch; }
+        #editorAside { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        #tree { flex: 1; min-height: 0; overflow-y: auto; max-height: none; }
+        #editorMain { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .editor-area { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #editorTabBar { flex-shrink: 0; display: flex; align-items: center; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--sf-border); margin-bottom: 4px; }
+        .tab-btn { padding: 4px 14px; font-size: 0.875rem; cursor: pointer; border-bottom: 2px solid transparent; opacity: 0.6; background: none; }
+        .tab-btn.tab-active { border-bottom: 2px solid var(--sf-link); opacity: 1; font-weight: 500; color: var(--sf-text); }
+        .editor-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #rawEditor { flex: 1; min-height: 0; resize: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875rem; line-height: 1.6; }
+        #vditor { flex: 1; min-height: 0; }
     </style>
 </head>
 <body class="theme-page min-h-screen">
@@ -433,12 +444,17 @@ if ($route === 'admin') {
             $structure = get_structure($user['id']);
             $files = $structure['files'] ?? [];
         ?>
-        <div class="grid grid-cols-12 gap-4">
-            <aside class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
-                <h3 class="font-semibold mb-2">Tree</h3>
-                <ul id="tree" class="tree-root text-sm max-h-[45vh] overflow-auto"></ul>
+        <div id="appGrid" class="grid grid-cols-12 gap-4">
+            <aside id="editorAside" class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
+                <h3 class="font-semibold mb-2 flex-shrink-0">Tree</h3>
+                <ul id="tree" class="tree-root text-sm"></ul>
                 <div class="mt-3 space-y-1">
-                    <input id="newPath" class="theme-input w-full border rounded p-2 text-sm" placeholder="folder/my-note.md">
+                    <datalist id="folderList"></datalist>
+                    <input id="newFolder" list="folderList" class="theme-input w-full border rounded p-2 text-sm" placeholder="Folder (optional)">
+                    <div class="flex items-center gap-1">
+                        <input id="newFileName" class="theme-input flex-1 border rounded p-2 text-sm" placeholder="File name">
+                        <span class="text-xs theme-muted whitespace-nowrap">.md</span>
+                    </div>
                     <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
                 </div>
                 <div class="mt-3">
@@ -446,32 +462,49 @@ if ($route === 'admin') {
                     <div id="tags" class="flex flex-wrap gap-1 text-xs"></div>
                 </div>
             </aside>
-            <main class="col-span-12 md:col-span-9 theme-panel rounded shadow p-3">
-                <div class="flex flex-wrap gap-2 items-center mb-2">
+            <main id="editorMain" class="col-span-12 md:col-span-9 theme-panel rounded shadow p-3">
+                <div class="flex flex-wrap gap-2 items-center mb-2 flex-shrink-0">
                     <input id="searchQuery" class="theme-input border rounded p-2 text-sm flex-1" placeholder="Search notes...">
                     <select id="scope" class="theme-input border rounded p-2 text-sm"><option value="global">Global</option><option value="folder">In this folder</option></select>
                     <input id="scopeFolder" class="theme-input border rounded p-2 text-sm" placeholder="folder path (optional)">
                     <button id="searchBtn" class="bg-slate-700 text-white rounded px-3 py-2 text-sm">Search</button>
                     <span id="activeNote" class="text-sm theme-muted"></span>
                 </div>
-                <div id="searchResults" class="text-sm mb-2"></div>
-                <div id="vditor"></div>
-                <textarea id="fallbackEditor" class="theme-input w-full min-h-[60vh] border rounded p-2 hidden"></textarea>
-                <button id="saveBtn" class="mt-2 bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
+                <div id="searchResults" class="text-sm mb-2 flex-shrink-0"></div>
+                <div id="editorArea" class="editor-area">
+                    <div id="editorTabBar">
+                        <button id="tabRichBtn" class="tab-btn tab-active">Rich Editor</button>
+                        <button id="tabSourceBtn" class="tab-btn">Markdown Source</button>
+                    </div>
+                    <div id="tabRichPanel" class="editor-panel">
+                        <div id="vditor"></div>
+                    </div>
+                    <div id="tabSourcePanel" class="editor-panel hidden">
+                        <textarea id="rawEditor" class="theme-input w-full border rounded p-2"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-2 flex-shrink-0">
+                    <button id="saveBtn" class="bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
+                </div>
             </main>
         </div>
         <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
-            const state = { activeNote: '', editor: null, autosaveTimer: null };
+            const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich' };
             const csrfToken = <?= json_encode($csrfToken) ?>;
             const TREE_NOTE_SELECTOR = 'button[data-note]';
+            // Approximate pixel offset (header + search bar + tab bar + save row + padding) used
+            // to compute an initial pixel height for Vditor before ResizeObserver takes over.
+            const VDITOR_HEIGHT_OFFSET = 250;
+            const AUTOSAVE_DEBOUNCE_MS = 1200;
             let treeFiles = [];
             try {
                 treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
             } catch (error) {
                 console.error('Invalid tree data JSON payload.', error);
             }
+            const rawEditorEl = document.getElementById('rawEditor');
 
             async function api(payload) {
                 const body = new URLSearchParams({ ...payload, csrf: csrfToken });
@@ -480,13 +513,44 @@ if ($route === 'admin') {
             }
 
             function contentGet() {
+                if (state.activeTab === 'source') return rawEditorEl.value;
                 if (state.editor) return state.editor.getValue();
-                return document.getElementById('fallbackEditor').value;
+                return rawEditorEl.value;
             }
 
             function contentSet(value) {
+                rawEditorEl.value = value || '';
                 if (state.editor) state.editor.setValue(value || '');
-                else document.getElementById('fallbackEditor').value = value || '';
+            }
+
+            function adjustEditorHeight() {
+                const panel = document.getElementById('tabRichPanel');
+                if (!panel || !state.editor) return;
+                const h = panel.clientHeight;
+                if (h > 100) state.editor.vditor.element.style.height = h + 'px';
+            }
+
+            function switchTab(tab) {
+                const richPanel = document.getElementById('tabRichPanel');
+                const sourcePanel = document.getElementById('tabSourcePanel');
+                const richBtn = document.getElementById('tabRichBtn');
+                const sourceBtn = document.getElementById('tabSourceBtn');
+                if (tab === 'rich') {
+                    if (state.editor) state.editor.setValue(rawEditorEl.value);
+                    richPanel.classList.remove('hidden');
+                    sourcePanel.classList.add('hidden');
+                    richBtn.classList.add('tab-active');
+                    sourceBtn.classList.remove('tab-active');
+                    state.activeTab = 'rich';
+                    adjustEditorHeight();
+                } else {
+                    if (state.editor) rawEditorEl.value = state.editor.getValue();
+                    richPanel.classList.add('hidden');
+                    sourcePanel.classList.remove('hidden');
+                    richBtn.classList.remove('tab-active');
+                    sourceBtn.classList.add('tab-active');
+                    state.activeTab = 'source';
+                }
             }
 
             function buildTree(paths) {
@@ -627,12 +691,27 @@ if ($route === 'admin') {
             }
 
             function wireAutosave() {
-                const target = state.editor ? state.editor.vditor.element : document.getElementById('fallbackEditor');
-                target.addEventListener('input', () => {
-                    clearTimeout(state.autosaveTimer);
-                    state.autosaveTimer = setTimeout(saveCurrent, 1200);
-                });
+                if (state.editor) {
+                    state.editor.vditor.element.addEventListener('input', () => {
+                        clearTimeout(state.autosaveTimer);
+                        state.autosaveTimer = setTimeout(saveCurrent, AUTOSAVE_DEBOUNCE_MS);
+                    });
+                }
             }
+
+            let rawSyncTimer = null;
+            rawEditorEl.addEventListener('input', () => {
+                clearTimeout(state.autosaveTimer);
+                state.autosaveTimer = setTimeout(saveCurrent, AUTOSAVE_DEBOUNCE_MS);
+                if (state.editor) {
+                    clearTimeout(rawSyncTimer);
+                    rawSyncTimer = setTimeout(() => state.editor.setValue(rawEditorEl.value), AUTOSAVE_DEBOUNCE_MS);
+                }
+            });
+
+            document.getElementById('tabRichBtn').addEventListener('click', () => switchTab('rich'));
+            document.getElementById('tabSourceBtn').addEventListener('click', () => switchTab('source'));
+            window.addEventListener('resize', adjustEditorHeight);
 
             document.getElementById('tree').addEventListener('click', (event) => {
                 const target = event.target.closest(TREE_NOTE_SELECTOR);
@@ -640,9 +719,27 @@ if ($route === 'admin') {
                 openNote(target.dataset.note);
             });
 
+            function populateFolderList(paths) {
+                const folders = new Set();
+                paths.forEach((path) => {
+                    const parts = path.split('/').filter(Boolean);
+                    for (let i = 1; i < parts.length; i++) {
+                        folders.add(parts.slice(0, i).join('/'));
+                    }
+                });
+                const datalist = document.getElementById('folderList');
+                Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
+                    const opt = document.createElement('option');
+                    opt.value = folder;
+                    datalist.appendChild(opt);
+                });
+            }
+
             document.getElementById('createBtn').addEventListener('click', async () => {
-                const path = document.getElementById('newPath').value.trim();
-                if (!path) return;
+                const folder = document.getElementById('newFolder').value.trim().replace(/^\/+|\/+$/g, '');
+                const fileName = document.getElementById('newFileName').value.trim();
+                if (!fileName) return;
+                const path = folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
                 const out = await api({ action: 'create', path });
                 if (!out.ok) return alert(out.error || 'Failed');
                 location.reload();
@@ -668,24 +765,46 @@ if ($route === 'admin') {
                 });
             });
 
+            function getVditorTheme() {
+                const t = document.documentElement.getAttribute('data-theme') || 'light-slate';
+                return t.startsWith('dark-') ? 'dark' : 'classic';
+            }
+
+            window.sfOnThemeChange = (theme) => {
+                if (state.editor) {
+                    state.editor.setTheme(theme.startsWith('dark-') ? 'dark' : 'classic');
+                }
+            };
+
             (async () => {
                 try {
                     if (window.Vditor) {
                         state.editor = new Vditor('vditor', {
-                            height: 560,
+                            height: Math.max(300, window.innerHeight - VDITOR_HEIGHT_OFFSET),
                             mode: 'wysiwyg',
                             lang: 'en_US',
-                            cache: { enable: false }
+                            cache: { enable: false },
+                            theme: getVditorTheme(),
+                            after() {
+                                adjustEditorHeight();
+                                // ResizeObserver is intentionally not disconnected; acceptable for a
+                                // single-page-per-load lifecycle where the editor is never recreated.
+                                const panel = document.getElementById('tabRichPanel');
+                                if (panel) {
+                                    const ro = new ResizeObserver(adjustEditorHeight);
+                                    ro.observe(panel);
+                                }
+                            },
                         });
                     } else {
-                        document.getElementById('vditor').classList.add('hidden');
-                        document.getElementById('fallbackEditor').classList.remove('hidden');
+                        switchTab('source');
                     }
                 } catch (e) {
-                    document.getElementById('vditor').classList.add('hidden');
-                    document.getElementById('fallbackEditor').classList.remove('hidden');
+                    state.editor = null;
+                    switchTab('source');
                 }
                 renderTree(treeFiles);
+                populateFolderList(treeFiles);
                 setTimeout(wireAutosave, 500);
                 await loadTags();
             })();
@@ -715,7 +834,12 @@ if ($route === 'admin') {
         if (!select) return;
         const currentTheme = document.documentElement.getAttribute('data-theme') || config.defaultTheme;
         select.value = themes.has(currentTheme) ? currentTheme : config.defaultTheme;
-        select.addEventListener('change', (event) => applyTheme(event.target.value, true));
+        select.addEventListener('change', (event) => {
+            applyTheme(event.target.value, true);
+            if (typeof window.sfOnThemeChange === 'function') {
+                window.sfOnThemeChange(event.target.value);
+            }
+        });
     })();
 </script>
 </body>
