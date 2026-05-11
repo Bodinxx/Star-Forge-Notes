@@ -164,6 +164,16 @@ if ($route === 'api' && $method === 'POST') {
             exit;
         }
 
+        if ($action === 'create_folder') {
+            $err = create_folder($user['id'], $_POST['path'] ?? '');
+            if ($err) {
+                echo json_encode(['ok' => false, 'error' => $err]);
+            } else {
+                echo json_encode(['ok' => true, 'structure' => get_structure($user['id'])]);
+            }
+            exit;
+        }
+
         if ($action === 'save') {
             $notePath = $_POST['path'] ?? '';
             $err = save_note($user['id'], $notePath, $_POST['content'] ?? '');
@@ -191,6 +201,31 @@ if ($route === 'api' && $method === 'POST') {
             $toFolder = $_POST['to_folder'] ?? '';
             $err = move_note($user['id'], $from, $toFolder);
             $movedPath = move_note_destination_path($from, $toFolder);
+            echo json_encode([
+                'ok' => $err === null,
+                'error' => $err,
+                'moved_path' => $err === null ? $movedPath : null,
+                'last_saved_at' => $err === null ? note_last_saved_at_utc($user['id'], $movedPath) : null,
+                'structure' => $err === null ? get_structure($user['id']) : null,
+            ]);
+            exit;
+        }
+
+        if ($action === 'delete') {
+            $path = $_POST['path'] ?? '';
+            $err = delete_note($user['id'], $path);
+            echo json_encode([
+                'ok' => $err === null,
+                'error' => $err,
+                'structure' => $err === null ? get_structure($user['id']) : null,
+            ]);
+            exit;
+        }
+
+        if ($action === 'archive') {
+            $path = $_POST['path'] ?? '';
+            $err = archive_note($user['id'], $path);
+            $movedPath = move_note_destination_path($path, ARCHIVE_FOLDER_NAME);
             echo json_encode([
                 'ok' => $err === null,
                 'error' => $err,
@@ -367,6 +402,10 @@ if ($route === 'admin') {
         .tree-folder-icon, .tree-file-icon { color: var(--sf-muted); width: 14px; text-align: center; }
         .tree-branch { margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--sf-border); }
         .tree-note-button { display: inline-flex; align-items: center; gap: 6px; width: 100%; text-align: left; border-radius: 4px; padding: 2px 4px; }
+        .tree-note-row { display: flex; align-items: center; gap: 4px; }
+        .tree-note-row .tree-note-button { flex: 1; }
+        .tree-note-action { border-radius: 4px; padding: 2px 4px; line-height: 1; color: var(--sf-muted); }
+        .tree-note-action:hover { background: color-mix(in srgb, var(--sf-tag-bg) 55%, transparent); color: var(--sf-text); }
         .tree-note-button[draggable="true"] { cursor: grab; }
         .tree-note-button:hover, .tree-folder > summary:hover { background: color-mix(in srgb, var(--sf-tag-bg) 55%, transparent); }
         .tree-note-button.is-active { background: color-mix(in srgb, var(--sf-tag-bg) 85%, transparent); font-weight: 600; }
@@ -562,6 +601,7 @@ if ($route === 'admin') {
             require_auth();
             $structure = get_structure($user['id']);
             $files = $structure['files'] ?? [];
+            $folders = $structure['folders'] ?? [];
         ?>
         <div id="appGrid" class="grid grid-cols-12 gap-4">
         <aside id="editorAside" class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
@@ -580,7 +620,10 @@ if ($route === 'admin') {
                             <input id="newFileName" class="theme-input border rounded p-2 text-sm flex-1" style="min-width:60px" placeholder="File name">
                             <span class="text-xs theme-muted whitespace-nowrap">.md</span>
                         </div>
-                        <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
+                        <div class="flex gap-1">
+                            <button id="createBtn" class="flex-1 bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
+                            <button id="createFolderBtn" class="flex-1 bg-slate-700 text-white rounded p-2 text-sm">Create Folder</button>
+                        </div>
                     </div>
                     <div class="mt-3 flex-shrink-0">
                         <h4 class="font-semibold mb-1">Tags</h4>
@@ -620,7 +663,7 @@ if ($route === 'admin') {
                 </div>
             </main>
         </div>
-        <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
+        <script id="tree-structure-data" type="application/json"><?= json_encode(['files' => $files, 'folders' => $folders], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich', isDirty: false, lastSavedAt: null };
@@ -633,8 +676,11 @@ if ($route === 'admin') {
             const LAST_SAVED_TIMEZONE = 'America/Phoenix';
             const LAST_SAVED_LABEL = 'MST';
             let treeFiles = [];
+            let treeFolders = [];
             try {
-                treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
+                const treeStructure = JSON.parse(document.getElementById('tree-structure-data')?.textContent || '{}');
+                treeFiles = Array.isArray(treeStructure.files) ? treeStructure.files : [];
+                treeFolders = Array.isArray(treeStructure.folders) ? treeStructure.folders : [];
             } catch (error) {
                 console.error('Invalid tree data JSON payload.', error);
             }
@@ -687,9 +733,31 @@ if ($route === 'admin') {
                 }
             }
 
-            function buildTree(paths) {
+            function folderSortCompare(left, right) {
+                const leftIsArchive = left.toLowerCase() === 'archive';
+                const rightIsArchive = right.toLowerCase() === 'archive';
+                if (leftIsArchive && !rightIsArchive) return 1;
+                if (!leftIsArchive && rightIsArchive) return -1;
+                return caseInsensitiveCompare(left, right);
+            }
+
+            function ensureFolderNode(root, folderPath) {
+                const parts = folderPath.split('/').filter(Boolean);
+                let node = root;
+                parts.forEach((part) => {
+                    if (!node.folders.has(part)) {
+                        node.folders.set(part, { folders: new Map(), files: [] });
+                    }
+                    node = node.folders.get(part);
+                });
+            }
+
+            function buildTree(files, folders) {
                 const root = { folders: new Map(), files: [] };
-                paths.forEach((path) => {
+                folders.forEach((folderPath) => {
+                    ensureFolderNode(root, folderPath);
+                });
+                files.forEach((path) => {
                     const parts = path.split('/').filter(Boolean);
                     if (!parts.length) return;
                     let node = root;
@@ -714,7 +782,7 @@ if ($route === 'admin') {
 
             function renderTreeNode(node, container, parentFolder = '') {
                 Array.from(node.folders.entries())
-                    .sort(([a], [b]) => caseInsensitiveCompare(a, b))
+                    .sort(([a], [b]) => folderSortCompare(a, b))
                     .forEach(([folderName, folderNode]) => {
                         const folderPath = parentFolder ? `${parentFolder}/${folderName}` : folderName;
                         const item = document.createElement('li');
@@ -752,6 +820,9 @@ if ($route === 'admin') {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
 
+                        const row = document.createElement('div');
+                        row.className = 'tree-note-row';
+
                         const btn = document.createElement('button');
                         btn.className = 'tree-note-button';
                         btn.dataset.note = file.path;
@@ -765,24 +836,46 @@ if ($route === 'admin') {
                         label.textContent = file.name;
                         btn.append(fileIcon, label);
 
-                        item.appendChild(btn);
+                        const archiveBtn = document.createElement('button');
+                        archiveBtn.type = 'button';
+                        archiveBtn.className = 'tree-note-action tree-note-archive';
+                        archiveBtn.dataset.noteArchive = file.path;
+                        archiveBtn.title = 'Archive note';
+                        archiveBtn.textContent = '🗄️';
+
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.type = 'button';
+                        deleteBtn.className = 'tree-note-action tree-note-delete';
+                        deleteBtn.dataset.noteDelete = file.path;
+                        deleteBtn.title = 'Delete note';
+                        deleteBtn.textContent = '🗑️';
+
+                        row.append(btn, archiveBtn, deleteBtn);
+                        item.appendChild(row);
                         container.appendChild(item);
                     });
             }
 
-            function renderTree(paths) {
+            function renderTree(files, folders) {
                 const tree = document.getElementById('tree');
                 tree.innerHTML = '';
                 tree.classList.remove('tree-drop-target');
-                if (!paths.length) {
+                if (!files.length && !folders.length) {
                     const empty = document.createElement('li');
                     empty.className = 'theme-muted';
                     empty.textContent = 'No notes yet.';
                     tree.appendChild(empty);
                     return;
                 }
-                const root = buildTree(paths);
+                const root = buildTree(files, folders);
                 renderTreeNode(root, tree, '');
+            }
+
+            function applyStructure(structure) {
+                treeFiles = Array.isArray(structure?.files) ? structure.files : [];
+                treeFolders = Array.isArray(structure?.folders) ? structure.folders : [];
+                renderTree(treeFiles, treeFolders);
+                populateFolderList(treeFiles, treeFolders);
             }
 
             function highlightActiveTreeNote() {
@@ -930,6 +1023,16 @@ if ($route === 'admin') {
             window.addEventListener('resize', adjustEditorHeight);
 
             document.getElementById('tree').addEventListener('click', (event) => {
+                const deleteBtn = event.target.closest('.tree-note-delete');
+                if (deleteBtn) {
+                    deleteTreeNote(deleteBtn.dataset.noteDelete || '');
+                    return;
+                }
+                const archiveBtn = event.target.closest('.tree-note-archive');
+                if (archiveBtn) {
+                    archiveTreeNote(archiveBtn.dataset.noteArchive || '');
+                    return;
+                }
                 const target = event.target.closest(TREE_NOTE_SELECTOR);
                 if (!target) return;
                 openNote(target.dataset.note);
@@ -981,9 +1084,7 @@ if ($route === 'admin') {
                     return;
                 }
 
-                treeFiles = out.structure?.files || [];
-                renderTree(treeFiles);
-                populateFolderList(treeFiles);
+                applyStructure(out.structure);
 
                 if (state.activeNote === fromPath) {
                     state.activeNote = out.moved_path || fromPath;
@@ -992,6 +1093,62 @@ if ($route === 'admin') {
                     updateLastSavedLabel();
                 }
                 highlightActiveTreeNote();
+            }
+
+            async function archiveTreeNote(path) {
+                if (!path) return;
+                if (state.activeNote === path && state.isDirty) {
+                    await saveCurrent();
+                    if (state.isDirty) {
+                        alert('Archive canceled because the note could not be saved.');
+                        return;
+                    }
+                }
+
+                const out = await api({ action: 'archive', path });
+                if (!out.ok) {
+                    alert(out.error || 'Archive failed.');
+                    return;
+                }
+
+                applyStructure(out.structure);
+                if (state.activeNote === path) {
+                    state.activeNote = out.moved_path || path;
+                    document.getElementById('activeNote').textContent = state.activeNote;
+                    state.lastSavedAt = out.last_saved_at || null;
+                    updateLastSavedLabel();
+                }
+                highlightActiveTreeNote();
+                await loadTags();
+            }
+
+            async function deleteTreeNote(path) {
+                if (!path || !confirm(`Delete note "${path}"?`)) return;
+                if (state.activeNote === path && state.isDirty) {
+                    await saveCurrent();
+                    if (state.isDirty) {
+                        alert('Delete canceled because the note could not be saved.');
+                        return;
+                    }
+                }
+
+                const out = await api({ action: 'delete', path });
+                if (!out.ok) {
+                    alert(out.error || 'Delete failed.');
+                    return;
+                }
+
+                applyStructure(out.structure);
+                if (state.activeNote === path) {
+                    state.activeNote = '';
+                    document.getElementById('activeNote').textContent = '';
+                    state.lastSavedAt = null;
+                    updateLastSavedLabel();
+                    contentSet('');
+                    markClean();
+                }
+                highlightActiveTreeNote();
+                await loadTags();
             }
 
             document.getElementById('tree').addEventListener('dragstart', (event) => {
@@ -1036,18 +1193,18 @@ if ($route === 'admin') {
                 clearTreeDropTargets();
             });
 
-            function populateFolderList(paths) {
+            function populateFolderList(files, folders) {
                 const datalist = document.getElementById('folderList');
                 if (!datalist) return;
-                const folders = new Set();
-                paths.forEach((path) => {
+                const allFolders = new Set(Array.isArray(folders) ? folders : []);
+                files.forEach((path) => {
                     const parts = path.split('/').filter(Boolean);
                     for (let i = 1; i < parts.length; i++) {
-                        folders.add(parts.slice(0, i).join('/'));
+                        allFolders.add(parts.slice(0, i).join('/'));
                     }
                 });
                 datalist.innerHTML = '';
-                Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
+                Array.from(allFolders).sort((a, b) => folderSortCompare(a, b)).forEach((folder) => {
                     const opt = document.createElement('option');
                     opt.value = folder;
                     datalist.appendChild(opt);
@@ -1061,7 +1218,21 @@ if ($route === 'admin') {
                 const path = folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
                 const out = await api({ action: 'create', path });
                 if (!out.ok) return alert(out.error || 'Failed');
-                location.reload();
+                applyStructure(out.structure);
+                document.getElementById('newFileName').value = '';
+                await openNote(path);
+                await loadTags();
+            });
+
+            document.getElementById('createFolderBtn').addEventListener('click', async () => {
+                const folder = document.getElementById('newFolder').value.trim().replace(/^\/+|\/+$/g, '');
+                if (!folder) {
+                    alert('Folder path is required.');
+                    return;
+                }
+                const out = await api({ action: 'create_folder', path: folder });
+                if (!out.ok) return alert(out.error || 'Failed');
+                applyStructure(out.structure);
             });
 
             document.getElementById('saveBtn').addEventListener('click', saveCurrent);
@@ -1122,8 +1293,8 @@ if ($route === 'admin') {
                     state.editor = null;
                     switchTab('source');
                 }
-                renderTree(treeFiles);
-                populateFolderList(treeFiles);
+                renderTree(treeFiles, treeFolders);
+                populateFolderList(treeFiles, treeFolders);
                 setTimeout(wireAutosave, 500);
                 updateSaveButton();
                 updateLastSavedLabel();
