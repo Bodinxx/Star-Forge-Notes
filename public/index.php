@@ -630,6 +630,8 @@ if ($route === 'admin') {
             // to compute an initial pixel height for Vditor before ResizeObserver takes over.
             const VDITOR_HEIGHT_OFFSET = 250;
             const AUTOSAVE_DEBOUNCE_MS = 1200;
+            const LAST_SAVED_TIMEZONE = 'America/Phoenix';
+            const LAST_SAVED_LABEL = 'MST';
             let treeFiles = [];
             try {
                 treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
@@ -803,7 +805,7 @@ if ($route === 'admin') {
                 const date = new Date(isoValue);
                 if (Number.isNaN(date.getTime())) return '';
                 const formatted = new Intl.DateTimeFormat('en-US', {
-                    timeZone: 'America/Phoenix',
+                    timeZone: LAST_SAVED_TIMEZONE,
                     year: 'numeric',
                     month: '2-digit',
                     day: '2-digit',
@@ -812,7 +814,7 @@ if ($route === 'admin') {
                     second: '2-digit',
                     hour12: true,
                 }).format(date);
-                return `Last saved (MST): ${formatted}`;
+                return `Last saved (${LAST_SAVED_LABEL}): ${formatted}`;
             }
 
             function updateLastSavedLabel() {
@@ -1040,6 +1042,7 @@ if ($route === 'admin') {
                     }
                 });
                 const datalist = document.getElementById('folderList');
+                if (!datalist) return;
                 datalist.innerHTML = '';
                 Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
                     const opt = document.createElement('option');
