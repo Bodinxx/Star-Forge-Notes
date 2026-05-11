@@ -424,7 +424,9 @@ function archive_note(string $userId, string $notePath): ?string
     if ($notePath === '') {
         return 'Note path is required.';
     }
-    if ($notePath === ARCHIVE_FOLDER_NAME || str_starts_with($notePath, ARCHIVE_FOLDER_NAME . '/')) {
+    $notePathLower = strtolower($notePath);
+    $archivePrefixLower = strtolower(ARCHIVE_FOLDER_NAME);
+    if ($notePathLower === $archivePrefixLower || str_starts_with($notePathLower, $archivePrefixLower . '/')) {
         return 'Note is already archived.';
     }
 

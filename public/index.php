@@ -675,6 +675,7 @@ if ($route === 'admin') {
             const AUTOSAVE_DEBOUNCE_MS = 1200;
             const LAST_SAVED_TIMEZONE = 'America/Phoenix';
             const LAST_SAVED_LABEL = 'MST';
+            const ARCHIVE_FOLDER_NAME = <?= json_encode(ARCHIVE_FOLDER_NAME) ?>;
             let treeFiles = [];
             let treeFolders = [];
             try {
@@ -734,8 +735,8 @@ if ($route === 'admin') {
             }
 
             function folderSortCompare(left, right) {
-                const leftIsArchive = left.toLowerCase() === 'archive';
-                const rightIsArchive = right.toLowerCase() === 'archive';
+                const leftIsArchive = left.toLowerCase() === ARCHIVE_FOLDER_NAME.toLowerCase();
+                const rightIsArchive = right.toLowerCase() === ARCHIVE_FOLDER_NAME.toLowerCase();
                 if (leftIsArchive && !rightIsArchive) return 1;
                 if (!leftIsArchive && rightIsArchive) return -1;
                 return caseInsensitiveCompare(left, right);
