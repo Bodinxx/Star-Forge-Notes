@@ -562,7 +562,17 @@ function all_tags(string $userId): array
         }
     }
 
-    ksort($tags);
+    uksort($tags, static function (string $a, string $b) use ($tags): int {
+        $countDiff = ($tags[$b] <=> $tags[$a]);
+        if ($countDiff !== 0) {
+            return $countDiff;
+        }
+        $nameDiff = strcasecmp($a, $b);
+        if ($nameDiff !== 0) {
+            return $nameDiff;
+        }
+        return strcmp($a, $b);
+    });
     return $tags;
 }
 

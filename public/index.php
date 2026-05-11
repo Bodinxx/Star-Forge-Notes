@@ -270,6 +270,15 @@ if ($route === 'admin') {
     require_admin();
 }
 
+$siteLogoDataUri = null;
+$siteLogoPath = DATA_PATH . '/site_logo.webp';
+if (is_file($siteLogoPath) && is_readable($siteLogoPath)) {
+    $logoRaw = file_get_contents($siteLogoPath);
+    if (is_string($logoRaw) && $logoRaw !== '') {
+        $siteLogoDataUri = 'data:image/webp;base64,' . base64_encode($logoRaw);
+    }
+}
+
 ?><!doctype html>
 <html lang="en">
 <head>
@@ -391,6 +400,10 @@ if ($route === 'admin') {
         .status-banner-success { background: var(--sf-status-success-bg); border-color: var(--sf-status-success-border); color: var(--sf-status-success-text); }
         .status-banner-error { background: var(--sf-status-error-bg); border-color: var(--sf-status-error-border); color: var(--sf-status-error-text); }
         .status-banner-info { background: var(--sf-status-info-bg); border-color: var(--sf-status-info-border); color: var(--sf-status-info-text); }
+        .title-wrap { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+        .site-logo-frame { width: 2.5rem; aspect-ratio: 1 / 1; border-radius: 0.375rem; border: 1px solid var(--sf-border); background: color-mix(in srgb, var(--sf-panel) 70%, var(--sf-tag-bg)); overflow: hidden; flex-shrink: 0; display: grid; place-items: center; }
+        .site-logo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .site-logo-placeholder { font-size: 0.625rem; color: var(--sf-muted); }
         .tree-root, .tree-branch { list-style: none; margin: 0; padding-left: 0; }
         .tree-item { margin: 2px 0; }
         .tree-folder { margin: 0; }
@@ -430,6 +443,9 @@ if ($route === 'admin') {
         #saveBtn { transition: background-color 0.2s; }
         #saveBtn.save-idle { background-color: #6b7280; opacity: 0.7; cursor: default; }
         #saveBtn.save-dirty { background-color: #16a34a; }
+        #tags { max-height: calc((1.75rem * 3) + 0.5rem); overflow-y: auto; align-content: flex-start; }
+        .vditor-reset ol, .vditor-wysiwyg ol, .vditor-ir ol { list-style: decimal outside !important; padding-left: 1.5rem !important; margin: 0.5rem 0 !important; }
+        .vditor-reset ul, .vditor-wysiwyg ul, .vditor-ir ul { list-style: disc outside !important; padding-left: 1.5rem !important; margin: 0.5rem 0 !important; }
         /* Vditor dark mode: fix all text colors */
         [data-theme^="dark-"] .vditor-reset,
         [data-theme^="dark-"] .vditor-wysiwyg,
@@ -491,7 +507,16 @@ if ($route === 'admin') {
 <body class="theme-page min-h-screen">
 <div class="theme-container w-full">
     <header class="mb-4 flex items-center justify-between">
-        <h1 class="text-2xl font-bold">Star-Forge Notes (Draft)</h1>
+        <div class="title-wrap">
+            <div class="site-logo-frame">
+                <?php if ($siteLogoDataUri): ?>
+                    <img src="<?= htmlspecialchars($siteLogoDataUri) ?>" alt="Site logo">
+                <?php else: ?>
+                    <span class="site-logo-placeholder">Logo</span>
+                <?php endif; ?>
+            </div>
+            <h1 class="text-2xl font-bold">Star-Forge Notes</h1>
+        </div>
         <div class="flex gap-2 items-center flex-wrap justify-end">
             <label class="text-sm theme-muted" for="themeSelect">Theme</label>
             <select id="themeSelect" class="theme-input border rounded px-2 py-1 text-sm">
@@ -981,7 +1006,13 @@ if ($route === 'admin') {
                 const el = document.getElementById('tags');
                 el.innerHTML = '';
                 if (!out.ok) return;
-                Object.entries(out.tags).forEach(([tag, count]) => {
+                Object.entries(out.tags)
+                    .sort((a, b) => {
+                        const countDiff = Number(b[1]) - Number(a[1]);
+                        if (countDiff !== 0) return countDiff;
+                        return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: 'base' });
+                    })
+                    .forEach(([tag, count]) => {
                     const btn = document.createElement('button');
                     btn.className = 'px-2 py-1 rounded theme-tag';
                     btn.textContent = `#${tag} (${count})`;
