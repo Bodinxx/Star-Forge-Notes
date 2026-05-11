@@ -364,7 +364,9 @@ function move_note(string $userId, string $fromPath, string $destinationFolder):
         if ($entries === false || count($entries) > 2) {
             break;
         }
-        rmdir($cursor);
+        if (!rmdir($cursor)) {
+            break;
+        }
         $cursor = dirname($cursor);
     }
 
