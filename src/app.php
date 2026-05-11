@@ -7,6 +7,7 @@ const DATA_PATH = ROOT_PATH . '/data';
 const USERS_FILE = DATA_PATH . '/users.json';
 const VAULTS_PATH = ROOT_PATH . '/vaults';
 const MIN_PASSWORD_LENGTH = 8;
+const ARCHIVE_FOLDER_NAME = 'Archive';
 
 function app_bootstrap(): void
 {
@@ -267,6 +268,35 @@ function create_note(string $userId, string $notePath): ?string
     return null;
 }
 
+function create_folder(string $userId, string $folderPath): ?string
+{
+    $folderPath = normalize_note_path($folderPath);
+    if ($folderPath === '') {
+        return 'Folder path is required.';
+    }
+
+    $vault = realpath(user_vault_path($userId));
+    if ($vault === false) {
+        return 'Vault not found.';
+    }
+
+    $fullPath = $vault . '/' . $folderPath;
+    if (is_dir($fullPath)) {
+        return 'Folder already exists.';
+    }
+
+    if (is_file($fullPath)) {
+        return 'A note already exists with this path.';
+    }
+
+    if (!mkdir($fullPath, 0700, true) && !is_dir($fullPath)) {
+        return 'Unable to create folder.';
+    }
+
+    rebuild_structure($userId);
+    return null;
+}
+
 function save_note(string $userId, string $notePath, string $content): ?string
 {
     $fullPath = note_absolute_path($userId, $notePath);
@@ -355,23 +385,50 @@ function move_note(string $userId, string $fromPath, string $destinationFolder):
         return 'Unable to move note.';
     }
 
-    $cursor = dirname($sourceFullPath);
-    while ($cursor !== $vault && str_starts_with($cursor, $vault)) {
-        if (!is_dir($cursor)) {
-            break;
-        }
-        $entries = scandir($cursor);
-        if ($entries === false || count(array_diff($entries, ['.', '..'])) !== 0) {
-            break;
-        }
-        if (!rmdir($cursor)) {
-            break;
-        }
-        $cursor = dirname($cursor);
-    }
+    remove_empty_parent_folders($sourceFullPath, $vault);
 
     rebuild_structure($userId);
     return null;
+}
+
+function delete_note(string $userId, string $notePath): ?string
+{
+    $notePath = normalize_note_path($notePath);
+    if ($notePath === '') {
+        return 'Note path is required.';
+    }
+
+    $vault = realpath(user_vault_path($userId));
+    $fullPath = note_absolute_path($userId, $notePath);
+    if (!is_file($fullPath)) {
+        return 'Note not found.';
+    }
+    $sourceRealPath = realpath($fullPath);
+
+    if ($vault === false || $sourceRealPath === false || !str_starts_with($sourceRealPath, $vault)) {
+        return 'Invalid note location.';
+    }
+
+    if (!unlink($fullPath)) {
+        return 'Unable to delete note.';
+    }
+
+    remove_empty_parent_folders($fullPath, $vault);
+    rebuild_structure($userId);
+    return null;
+}
+
+function archive_note(string $userId, string $notePath): ?string
+{
+    $notePath = normalize_note_path($notePath);
+    if ($notePath === '') {
+        return 'Note path is required.';
+    }
+    if ($notePath === ARCHIVE_FOLDER_NAME || str_starts_with($notePath, ARCHIVE_FOLDER_NAME . '/')) {
+        return 'Note is already archived.';
+    }
+
+    return move_note($userId, $notePath, ARCHIVE_FOLDER_NAME);
 }
 
 function read_note(string $userId, string $notePath): ?string
@@ -388,17 +445,25 @@ function rebuild_structure(string $userId): array
 {
     $vault = user_vault_path($userId);
     $files = [];
+    $folders = [];
 
     $iter = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($vault, FilesystemIterator::SKIP_DOTS)
+        new RecursiveDirectoryIterator($vault, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
     );
 
     foreach ($iter as $fileInfo) {
-        if (!$fileInfo->isFile()) {
+        $relative = str_replace('\\', '/', str_replace($vault . '/', '', $fileInfo->getPathname()));
+        if ($relative === '' || $relative === 'structure.json') {
             continue;
         }
 
-        if ($fileInfo->getFilename() === 'structure.json') {
+        if ($fileInfo->isDir()) {
+            $folders[] = $relative;
+            continue;
+        }
+
+        if (!$fileInfo->isFile()) {
             continue;
         }
 
@@ -406,18 +471,22 @@ function rebuild_structure(string $userId): array
             continue;
         }
 
-        $relative = str_replace($vault . '/', '', $fileInfo->getPathname());
-        $files[] = str_replace('\\', '/', $relative);
+        $files[] = $relative;
     }
 
     sort($files);
+    sort($folders);
 
     $structure = [
         'updated_at' => date(DATE_ATOM),
         'files' => $files,
+        'folders' => $folders,
     ];
 
-    file_put_contents($vault . '/structure.json', json_encode($structure, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    $writeResult = file_put_contents($vault . '/structure.json', json_encode($structure, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    if ($writeResult === false) {
+        throw new RuntimeException('Failed to write structure index.');
+    }
 
     return $structure;
 }
@@ -432,11 +501,35 @@ function get_structure(string $userId): array
     }
 
     $data = json_decode(file_get_contents($structurePath) ?: '{}', true);
-    if (!is_array($data) || !isset($data['files']) || !is_array($data['files'])) {
+    if (
+        !is_array($data)
+        || !isset($data['files'])
+        || !is_array($data['files'])
+        || !isset($data['folders'])
+        || !is_array($data['folders'])
+    ) {
         return rebuild_structure($userId);
     }
 
     return $data;
+}
+
+function remove_empty_parent_folders(string $path, string $vault): void
+{
+    $cursor = dirname($path);
+    while ($cursor !== $vault && str_starts_with($cursor, $vault)) {
+        if (!is_dir($cursor)) {
+            break;
+        }
+        $entries = scandir($cursor);
+        if ($entries === false || count(array_diff($entries, ['.', '..'])) !== 0) {
+            break;
+        }
+        if (!rmdir($cursor)) {
+            break;
+        }
+        $cursor = dirname($cursor);
+    }
 }
 
 function extract_tags(string $content): array
