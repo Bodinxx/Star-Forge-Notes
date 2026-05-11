@@ -230,8 +230,9 @@ if ($route === 'admin') {
             const allowedThemes = new Set(config.themes);
             window.sfThemeConfig = config;
             window.sfApplyTheme = (theme, persist = true) => {
-                const selectedTheme = allowedThemes.has(theme) ? theme : config.defaultTheme;
-                if (!allowedThemes.has(theme)) {
+                const isValidTheme = allowedThemes.has(theme);
+                const selectedTheme = isValidTheme ? theme : config.defaultTheme;
+                if (!isValidTheme) {
                     console.warn('Invalid theme provided, using default:', theme, '->', config.defaultTheme);
                 }
                 document.documentElement.setAttribute('data-theme', selectedTheme);
@@ -565,8 +566,16 @@ if ($route === 'admin') {
 <script>
     (() => {
         const config = window.sfThemeConfig;
-        if (!config || !Array.isArray(config.themes) || typeof config.defaultTheme !== 'string') {
-            console.error('Theme configuration is missing or invalid.');
+        if (!config) {
+            console.error('Theme configuration is missing.');
+            return;
+        }
+        if (!Array.isArray(config.themes)) {
+            console.error('Theme configuration is invalid: themes must be an array.');
+            return;
+        }
+        if (typeof config.defaultTheme !== 'string') {
+            console.error('Theme configuration is invalid: defaultTheme must be a string.');
             return;
         }
         const themes = new Set(config.themes);
