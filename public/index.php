@@ -969,7 +969,10 @@ if ($route === 'admin') {
                 if (!fromPath) return;
                 if (state.activeNote === fromPath && state.isDirty) {
                     await saveCurrent();
-                    if (state.isDirty) return;
+                    if (state.isDirty) {
+                        alert('Move canceled because the note could not be saved.');
+                        return;
+                    }
                 }
 
                 const out = await api({ action: 'move', from: fromPath, to_folder: destinationFolder });
