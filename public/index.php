@@ -220,8 +220,18 @@ if ($route === 'admin') {
     <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
     <script>
         (() => {
-            const savedTheme = localStorage.getItem('sf-theme') || 'light-slate';
-            document.documentElement.setAttribute('data-theme', savedTheme);
+            const config = {
+                defaultTheme: 'light-slate',
+                themes: [
+                    'light-slate', 'light-sand', 'light-mint', 'light-lavender', 'light-sky',
+                    'dark-slate', 'dark-graphite', 'dark-forest', 'dark-plum', 'dark-ocean',
+                ],
+            };
+            const allowedThemes = new Set(config.themes);
+            const savedTheme = localStorage.getItem('sf-theme') || config.defaultTheme;
+            const selectedTheme = allowedThemes.has(savedTheme) ? savedTheme : config.defaultTheme;
+            document.documentElement.setAttribute('data-theme', selectedTheme);
+            window.sfThemeConfig = config;
         })();
     </script>
     <style>
@@ -516,11 +526,9 @@ if ($route === 'admin') {
 </div>
 <script>
     (() => {
-        const defaultTheme = 'light-slate';
-        const themes = new Set([
-            'light-slate', 'light-sand', 'light-mint', 'light-lavender', 'light-sky',
-            'dark-slate', 'dark-graphite', 'dark-forest', 'dark-plum', 'dark-ocean',
-        ]);
+        const config = window.sfThemeConfig || { defaultTheme: 'light-slate', themes: ['light-slate'] };
+        const themes = new Set(config.themes);
+        const defaultTheme = config.defaultTheme;
 
         const applyTheme = (theme) => {
             const selectedTheme = themes.has(theme) ? theme : defaultTheme;
