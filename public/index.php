@@ -438,7 +438,12 @@ if ($route === 'admin') {
                 <h3 class="font-semibold mb-2">Tree</h3>
                 <ul id="tree" class="tree-root text-sm max-h-[45vh] overflow-auto"></ul>
                 <div class="mt-3 space-y-1">
-                    <input id="newPath" class="theme-input w-full border rounded p-2 text-sm" placeholder="folder/my-note.md">
+                    <datalist id="folderList"></datalist>
+                    <input id="newFolder" list="folderList" class="theme-input w-full border rounded p-2 text-sm" placeholder="Folder (optional)">
+                    <div class="flex items-center gap-1">
+                        <input id="newFileName" class="theme-input flex-1 border rounded p-2 text-sm" placeholder="File name">
+                        <span class="text-xs theme-muted whitespace-nowrap">.md</span>
+                    </div>
                     <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
                 </div>
                 <div class="mt-3">
@@ -640,9 +645,27 @@ if ($route === 'admin') {
                 openNote(target.dataset.note);
             });
 
+            function populateFolderList(paths) {
+                const folders = new Set();
+                paths.forEach((path) => {
+                    const parts = path.split('/').filter(Boolean);
+                    for (let i = 1; i < parts.length; i++) {
+                        folders.add(parts.slice(0, i).join('/'));
+                    }
+                });
+                const datalist = document.getElementById('folderList');
+                Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
+                    const opt = document.createElement('option');
+                    opt.value = folder;
+                    datalist.appendChild(opt);
+                });
+            }
+
             document.getElementById('createBtn').addEventListener('click', async () => {
-                const path = document.getElementById('newPath').value.trim();
-                if (!path) return;
+                const folder = document.getElementById('newFolder').value.trim().replace(/^\/+|\/+$/g, '');
+                const fileName = document.getElementById('newFileName').value.trim();
+                if (!fileName) return;
+                const path = folder ? `${folder}/${fileName}.md` : `${fileName}.md`;
                 const out = await api({ action: 'create', path });
                 if (!out.ok) return alert(out.error || 'Failed');
                 location.reload();
@@ -668,6 +691,17 @@ if ($route === 'admin') {
                 });
             });
 
+            function getVditorTheme() {
+                const t = document.documentElement.getAttribute('data-theme') || 'light-slate';
+                return t.startsWith('dark-') ? 'dark' : 'classic';
+            }
+
+            window.sfOnThemeChange = (theme) => {
+                if (state.editor) {
+                    state.editor.setTheme(theme.startsWith('dark-') ? 'dark' : 'classic');
+                }
+            };
+
             (async () => {
                 try {
                     if (window.Vditor) {
@@ -675,7 +709,8 @@ if ($route === 'admin') {
                             height: 560,
                             mode: 'wysiwyg',
                             lang: 'en_US',
-                            cache: { enable: false }
+                            cache: { enable: false },
+                            theme: getVditorTheme(),
                         });
                     } else {
                         document.getElementById('vditor').classList.add('hidden');
@@ -686,6 +721,7 @@ if ($route === 'admin') {
                     document.getElementById('fallbackEditor').classList.remove('hidden');
                 }
                 renderTree(treeFiles);
+                populateFolderList(treeFiles);
                 setTimeout(wireAutosave, 500);
                 await loadTags();
             })();
@@ -715,7 +751,12 @@ if ($route === 'admin') {
         if (!select) return;
         const currentTheme = document.documentElement.getAttribute('data-theme') || config.defaultTheme;
         select.value = themes.has(currentTheme) ? currentTheme : config.defaultTheme;
-        select.addEventListener('change', (event) => applyTheme(event.target.value, true));
+        select.addEventListener('change', (event) => {
+            applyTheme(event.target.value, true);
+            if (typeof window.sfOnThemeChange === 'function') {
+                window.sfOnThemeChange(event.target.value);
+            }
+        });
     })();
 </script>
 </body>
