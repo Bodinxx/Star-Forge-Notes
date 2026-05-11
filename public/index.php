@@ -228,10 +228,15 @@ if ($route === 'admin') {
                 ],
             };
             const allowedThemes = new Set(config.themes);
-            const savedTheme = localStorage.getItem('sf-theme') || config.defaultTheme;
-            const selectedTheme = allowedThemes.has(savedTheme) ? savedTheme : config.defaultTheme;
-            document.documentElement.setAttribute('data-theme', selectedTheme);
             window.sfThemeConfig = config;
+            window.sfApplyTheme = (theme, persist = true) => {
+                const selectedTheme = allowedThemes.has(theme) ? theme : config.defaultTheme;
+                document.documentElement.setAttribute('data-theme', selectedTheme);
+                if (persist) localStorage.setItem('sf-theme', selectedTheme);
+                return selectedTheme;
+            };
+            const savedTheme = localStorage.getItem('sf-theme') || config.defaultTheme;
+            window.sfApplyTheme(savedTheme, false);
         })();
     </script>
     <style>
@@ -559,20 +564,14 @@ if ($route === 'admin') {
         const config = window.sfThemeConfig;
         if (!config || !Array.isArray(config.themes) || typeof config.defaultTheme !== 'string') return;
         const themes = new Set(config.themes);
-        const defaultTheme = config.defaultTheme;
-
-        const applyTheme = (theme) => {
-            const selectedTheme = themes.has(theme) ? theme : defaultTheme;
-            document.documentElement.setAttribute('data-theme', selectedTheme);
-            localStorage.setItem('sf-theme', selectedTheme);
-        };
+        const applyTheme = window.sfApplyTheme;
+        if (typeof applyTheme !== 'function') return;
 
         const select = document.getElementById('themeSelect');
-        const savedTheme = localStorage.getItem('sf-theme') || defaultTheme;
-        applyTheme(savedTheme);
         if (!select) return;
-        select.value = themes.has(savedTheme) ? savedTheme : defaultTheme;
-        select.addEventListener('change', (event) => applyTheme(event.target.value));
+        const currentTheme = document.documentElement.getAttribute('data-theme') || config.defaultTheme;
+        select.value = themes.has(currentTheme) ? currentTheme : config.defaultTheme;
+        select.addEventListener('change', (event) => applyTheme(event.target.value, true));
     })();
 </script>
 </body>
