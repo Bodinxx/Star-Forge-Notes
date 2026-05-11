@@ -172,7 +172,7 @@ if ($route === 'admin') {
                     <button class="w-full bg-indigo-600 text-white rounded p-2">Login</button>
                 </form>
                 <p class="text-sm mt-2">No account? <a class="text-indigo-700" href="?route=register">Request Account</a></p>
-                <p class="text-xs text-slate-600 mt-3">Default admin login for draft: <strong>admin / admin123!</strong></p>
+                <p class="text-xs text-amber-700 mt-3">Draft mode warning: rotate any seed credentials before deployment.</p>
             <?php else: ?>
                 <h2 class="text-xl font-semibold mb-3">Request Account</h2>
                 <form method="post" action="?route=register" class="space-y-2">
