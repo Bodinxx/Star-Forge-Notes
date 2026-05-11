@@ -622,7 +622,7 @@ if ($route === 'admin') {
                         </div>
                         <div class="flex gap-1">
                             <button id="createBtn" class="flex-1 bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
-                            <button id="createFolderBtn" class="flex-1 bg-slate-800 text-white rounded p-2 text-sm" aria-label="Create folder">Create Folder</button>
+                            <button id="createFolderBtn" class="flex-1 bg-slate-800 text-white rounded p-2 text-sm">Create Folder</button>
                         </div>
                     </div>
                     <div class="mt-3 flex-shrink-0">
@@ -1126,7 +1126,8 @@ if ($route === 'admin') {
             }
 
             async function deleteTreeNote(path) {
-                if (!path || !confirm(`Delete note "${path}"?`)) return;
+                const noteName = path.split('/').filter(Boolean).pop() || path;
+                if (!path || !confirm(`Delete note "${noteName}"?`)) return;
                 if (state.activeNote === path && state.isDirty) {
                     await saveCurrent();
                     if (state.isDirty) {
