@@ -420,6 +420,14 @@ function delete_note(string $userId, string $notePath): ?string
 
 function archive_note(string $userId, string $notePath): ?string
 {
+    $notePath = normalize_note_path($notePath);
+    if ($notePath === '') {
+        return 'Note path is required.';
+    }
+    if ($notePath === ARCHIVE_FOLDER_NAME || str_starts_with($notePath, ARCHIVE_FOLDER_NAME . '/')) {
+        return 'Note is already archived.';
+    }
+
     return move_note($userId, $notePath, ARCHIVE_FOLDER_NAME);
 }
 
