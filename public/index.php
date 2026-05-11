@@ -676,8 +676,10 @@ if ($route === 'admin') {
             const LAST_SAVED_TIMEZONE = 'America/Phoenix';
             const LAST_SAVED_LABEL = 'MST';
             const JS_ARCHIVE_FOLDER_NAME = <?= json_encode(ARCHIVE_FOLDER_NAME) ?>;
+            const TREE_STATE_STORAGE_KEY = <?= json_encode('sf-tree-closed-folders:' . ($user['id'] ?? '')) ?>;
             let treeFiles = [];
             let treeFolders = [];
+            let treeClosedFolders = null;
             try {
                 const treeStructure = JSON.parse(document.getElementById('tree-structure-data')?.textContent || '{}');
                 treeFiles = Array.isArray(treeStructure.files) ? treeStructure.files : [];
@@ -742,6 +744,55 @@ if ($route === 'admin') {
                 return caseInsensitiveCompare(left, right);
             }
 
+            function getTreeClosedFolders() {
+                if (treeClosedFolders instanceof Set) return treeClosedFolders;
+                try {
+                    const raw = localStorage.getItem(TREE_STATE_STORAGE_KEY);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    treeClosedFolders = new Set(Array.isArray(parsed) ? parsed.filter((path) => typeof path === 'string' && path !== '') : []);
+                } catch (error) {
+                    treeClosedFolders = new Set();
+                }
+                return treeClosedFolders;
+            }
+
+            function saveTreeClosedFolders() {
+                try {
+                    localStorage.setItem(TREE_STATE_STORAGE_KEY, JSON.stringify(Array.from(getTreeClosedFolders())));
+                } catch (error) {
+                    console.warn('Unable to persist tree folder state.', error);
+                }
+            }
+
+            function setFolderClosedState(folderPath, isClosed) {
+                if (!folderPath) return;
+                const closedFolders = getTreeClosedFolders();
+                if (isClosed) {
+                    closedFolders.add(folderPath);
+                } else {
+                    closedFolders.delete(folderPath);
+                }
+                saveTreeClosedFolders();
+            }
+
+            function isFolderClosed(folderPath) {
+                if (!folderPath) return false;
+                return getTreeClosedFolders().has(folderPath);
+            }
+
+            function pruneClosedFolderStates(existingFolders) {
+                const closedFolders = getTreeClosedFolders();
+                const keep = new Set(existingFolders);
+                let changed = false;
+                closedFolders.forEach((folderPath) => {
+                    if (!keep.has(folderPath)) {
+                        closedFolders.delete(folderPath);
+                        changed = true;
+                    }
+                });
+                if (changed) saveTreeClosedFolders();
+            }
+
             function ensureFolderNode(root, folderPath) {
                 const parts = folderPath.split('/').filter(Boolean);
                 let node = root;
@@ -792,7 +843,10 @@ if ($route === 'admin') {
                         const details = document.createElement('details');
                         details.className = 'tree-folder';
                         details.dataset.folderPath = folderPath;
-                        details.open = true;
+                        details.open = !isFolderClosed(folderPath);
+                        details.addEventListener('toggle', () => {
+                            setFolderClosedState(folderPath, !details.open);
+                        });
 
                         const summary = document.createElement('summary');
                         summary.className = 'tree-drop-zone';
@@ -877,6 +931,7 @@ if ($route === 'admin') {
             function applyStructure(structure) {
                 treeFiles = Array.isArray(structure?.files) ? structure.files : [];
                 treeFolders = Array.isArray(structure?.folders) ? structure.folders : [];
+                pruneClosedFolderStates(treeFolders);
                 renderTree(treeFiles, treeFolders);
                 populateFolderList(treeFiles, treeFolders);
             }
@@ -889,7 +944,10 @@ if ($route === 'admin') {
                     if (active) {
                         let parent = btn.parentElement;
                         while (parent) {
-                            if (parent.tagName === 'DETAILS') parent.open = true;
+                            if (parent.tagName === 'DETAILS') {
+                                parent.open = true;
+                                setFolderClosedState(parent.dataset.folderPath || '', false);
+                            }
                             parent = parent.parentElement;
                         }
                     }
