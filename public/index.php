@@ -1037,6 +1037,8 @@ if ($route === 'admin') {
             });
 
             function populateFolderList(paths) {
+                const datalist = document.getElementById('folderList');
+                if (!datalist) return;
                 const folders = new Set();
                 paths.forEach((path) => {
                     const parts = path.split('/').filter(Boolean);
@@ -1044,8 +1046,6 @@ if ($route === 'admin') {
                         folders.add(parts.slice(0, i).join('/'));
                     }
                 });
-                const datalist = document.getElementById('folderList');
-                if (!datalist) return;
                 datalist.innerHTML = '';
                 Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
                     const opt = document.createElement('option');
