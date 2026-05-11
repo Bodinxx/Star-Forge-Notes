@@ -504,8 +504,9 @@ if ($route === 'admin') {
             }
 
             function renderTreeNode(node, container) {
+                const sortByName = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
                 Array.from(node.folders.entries())
-                    .sort(([a], [b]) => a.localeCompare(b))
+                    .sort(([a], [b]) => sortByName(a, b))
                     .forEach(([folderName, folderNode]) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
@@ -534,7 +535,7 @@ if ($route === 'admin') {
                     });
 
                 node.files
-                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .sort((a, b) => sortByName(a.name, b.name))
                     .forEach((file) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
