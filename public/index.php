@@ -231,6 +231,9 @@ if ($route === 'admin') {
             window.sfThemeConfig = config;
             window.sfApplyTheme = (theme, persist = true) => {
                 const selectedTheme = allowedThemes.has(theme) ? theme : config.defaultTheme;
+                if (!allowedThemes.has(theme)) {
+                    console.warn('Invalid theme provided, using default:', theme, '->', config.defaultTheme);
+                }
                 document.documentElement.setAttribute('data-theme', selectedTheme);
                 if (persist) localStorage.setItem('sf-theme', selectedTheme);
                 return selectedTheme;
@@ -293,7 +296,7 @@ if ($route === 'admin') {
             --sf-input-bg: #082f49; --sf-tag-bg: #075985; --sf-tag-text: #e0f2fe; --sf-link: #93c5fd; color-scheme: dark;
         }
         body.theme-page { background: var(--sf-bg); color: var(--sf-text); }
-        .theme-container { --sf-shell-padding: 20px; min-height: calc(100vh - (var(--sf-shell-padding) * 2)); padding: var(--sf-shell-padding); }
+        .theme-container { --sf-shell-padding: 20px; min-height: 100vh; padding: var(--sf-shell-padding); }
         .theme-panel { background: var(--sf-panel); color: var(--sf-text); border: 1px solid var(--sf-border); }
         .theme-input { background: var(--sf-input-bg); color: var(--sf-text); border-color: var(--sf-border); }
         .theme-muted { color: var(--sf-muted); }
@@ -562,7 +565,10 @@ if ($route === 'admin') {
 <script>
     (() => {
         const config = window.sfThemeConfig;
-        if (!config || !Array.isArray(config.themes) || typeof config.defaultTheme !== 'string') return;
+        if (!config || !Array.isArray(config.themes) || typeof config.defaultTheme !== 'string') {
+            console.error('Theme configuration is missing or invalid.');
+            return;
+        }
         const themes = new Set(config.themes);
         const applyTheme = window.sfApplyTheme;
         if (typeof applyTheme !== 'function') return;
