@@ -336,15 +336,43 @@ if ($route === 'admin') {
         #saveBtn { transition: background-color 0.2s; }
         #saveBtn.save-idle { background-color: #6b7280; opacity: 0.7; cursor: default; }
         #saveBtn.save-dirty { background-color: #16a34a; }
-        /* Vditor dark mode: fix heading text color */
+        /* Vditor dark mode: fix all text colors */
+        [data-theme^="dark-"] .vditor-reset,
         [data-theme^="dark-"] .vditor-wysiwyg,
-        [data-theme^="dark-"] .vditor-ir { color: var(--sf-text); }
+        [data-theme^="dark-"] .vditor-ir { color: var(--sf-text) !important; }
+        [data-theme^="dark-"] .vditor-reset p,
+        [data-theme^="dark-"] .vditor-reset li,
+        [data-theme^="dark-"] .vditor-reset span,
+        [data-theme^="dark-"] .vditor-reset strong,
+        [data-theme^="dark-"] .vditor-reset em,
+        [data-theme^="dark-"] .vditor-reset del,
+        [data-theme^="dark-"] .vditor-reset blockquote,
+        [data-theme^="dark-"] .vditor-reset td,
+        [data-theme^="dark-"] .vditor-reset th,
+        [data-theme^="dark-"] .vditor-wysiwyg p,
+        [data-theme^="dark-"] .vditor-wysiwyg li,
+        [data-theme^="dark-"] .vditor-wysiwyg span,
+        [data-theme^="dark-"] .vditor-wysiwyg strong,
+        [data-theme^="dark-"] .vditor-wysiwyg em,
+        [data-theme^="dark-"] .vditor-wysiwyg del,
+        [data-theme^="dark-"] .vditor-wysiwyg blockquote,
+        [data-theme^="dark-"] .vditor-wysiwyg td,
+        [data-theme^="dark-"] .vditor-wysiwyg th,
         [data-theme^="dark-"] .vditor-wysiwyg h1,
         [data-theme^="dark-"] .vditor-wysiwyg h2,
         [data-theme^="dark-"] .vditor-wysiwyg h3,
         [data-theme^="dark-"] .vditor-wysiwyg h4,
         [data-theme^="dark-"] .vditor-wysiwyg h5,
         [data-theme^="dark-"] .vditor-wysiwyg h6,
+        [data-theme^="dark-"] .vditor-ir p,
+        [data-theme^="dark-"] .vditor-ir li,
+        [data-theme^="dark-"] .vditor-ir span,
+        [data-theme^="dark-"] .vditor-ir strong,
+        [data-theme^="dark-"] .vditor-ir em,
+        [data-theme^="dark-"] .vditor-ir del,
+        [data-theme^="dark-"] .vditor-ir blockquote,
+        [data-theme^="dark-"] .vditor-ir td,
+        [data-theme^="dark-"] .vditor-ir th,
         [data-theme^="dark-"] .vditor-ir h1,
         [data-theme^="dark-"] .vditor-ir h2,
         [data-theme^="dark-"] .vditor-ir h3,
@@ -352,12 +380,16 @@ if ($route === 'admin') {
         [data-theme^="dark-"] .vditor-ir h5,
         [data-theme^="dark-"] .vditor-ir h6 { color: var(--sf-text) !important; }
         /* Vditor dark mode: reverse code block colors */
+        [data-theme^="dark-"] .vditor-reset pre,
+        [data-theme^="dark-"] .vditor-reset pre code,
         [data-theme^="dark-"] .vditor-wysiwyg pre,
         [data-theme^="dark-"] .vditor-wysiwyg pre code,
         [data-theme^="dark-"] .vditor-ir pre,
         [data-theme^="dark-"] .vditor-ir pre code,
+        [data-theme^="dark-"] .vditor-reset code,
         [data-theme^="dark-"] .vditor-wysiwyg code,
         [data-theme^="dark-"] .vditor-ir code { background-color: #0f172a !important; color: #e2e8f0 !important; }
+        [data-theme^="dark-"] .vditor-reset pre .hljs,
         [data-theme^="dark-"] .vditor-wysiwyg pre .hljs,
         [data-theme^="dark-"] .vditor-ir pre .hljs { background-color: #0f172a !important; color: #e2e8f0 !important; }
     </style>
