@@ -61,3 +61,39 @@
 - **Phase 3 (Admin Tools)**: Create the dashboard for approving/managing users.
 - **Phase 4 (Search & Tags)**: Implement the recursive file scanner and tag parser.
 - **Phase 5 (The Editor)**: Integrate Vditor and finalize the UI layout.
+
+## 7. First Draft (Implemented)
+This repository now includes a first-draft implementation based on the requirements above.
+
+### Included
+- PHP flat-file auth with `users.json` (`pending` / `active` / `disabled`)
+- Request-account flow and login/logout
+- Per-user vault directories under `/vaults/{user_id}/`
+- Markdown note create/load/save with `structure.json` indexing
+- Basic tree list, full-text search (global/folder), and tag cloud from frontmatter
+- Admin panel for approve/disable/delete user accounts and vault size audit
+- Tailwind-based UI and Vditor integration (CDN)
+- `.htaccess` protections in `/data` and `/vaults`
+
+### Project Structure
+- `/public/index.php` — app entrypoint and UI
+- `/src/app.php` — storage, auth, vault, search, and tag logic
+- `/data/users.json` — user registry
+- `/vaults/` — per-user markdown vault storage
+
+### Local Run
+Use PHP's built-in web server from repository root:
+
+```bash
+php -S 127.0.0.1:8080 -t public
+```
+
+Then open:
+- `http://127.0.0.1:8080/?route=login`
+
+### Draft Admin Access
+For initial testing:
+- Username: `admin`
+- Password: `admin123!`
+
+Change this credential in `data/users.json` before any real deployment.
