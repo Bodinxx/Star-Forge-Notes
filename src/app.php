@@ -48,6 +48,11 @@ function current_user(): ?array
     return $_SESSION['user'] ?? null;
 }
 
+function is_password_change_required(): bool
+{
+    return (bool) (current_user()['force_password_change'] ?? false);
+}
+
 function csrf_token(): string
 {
     if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
@@ -92,6 +97,39 @@ function find_user_by_username(string $username): ?array
     return null;
 }
 
+function find_user_by_id(string $userId): ?array
+{
+    foreach (read_users() as $user) {
+        if (($user['id'] ?? '') === $userId) {
+            return $user;
+        }
+    }
+    return null;
+}
+
+function set_user_password(string $userId, string $password, bool $forcePasswordChange): bool
+{
+    $users = read_users();
+    $updated = false;
+
+    foreach ($users as &$user) {
+        if (($user['id'] ?? '') !== $userId) {
+            continue;
+        }
+        $user['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+        $user['force_password_change'] = $forcePasswordChange;
+        $updated = true;
+        break;
+    }
+    unset($user);
+
+    if ($updated) {
+        write_users($users);
+    }
+
+    return $updated;
+}
+
 function login_user(string $username, string $password): ?string
 {
     $user = find_user_by_username(trim($username));
@@ -106,6 +144,7 @@ function login_user(string $username, string $password): ?string
         'id' => $user['id'],
         'username' => $user['username'],
         'role' => $user['role'] ?? 'user',
+        'force_password_change' => (bool) ($user['force_password_change'] ?? false),
     ];
 
     ensure_vault($user['id']);

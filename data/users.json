@@ -2,9 +2,10 @@
   {
     "id": "admin",
     "username": "admin",
-    "password_hash": "$2y$10$20FUV.plo3JGBm2.KNKQcuMG6Lxs41Aq49uwE4BQFfwWNGVGh.PH2",
+    "password_hash": "$2y$10$T8ckp.FSOAk0Js7X7bnvOOQ.Jeq1B.7LTt1EdJ570SLFJTxFks8ji",
     "status": "active",
     "role": "admin",
+    "force_password_change": true,
     "created_at": "2026-01-01T00:00:00+00:00"
   }
 ]
