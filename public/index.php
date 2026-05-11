@@ -218,56 +218,110 @@ if ($route === 'admin') {
     <title>Star-Forge Notes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/vditor/dist/index.css" />
-    <style>#vditor { min-height: 60vh; }</style>
+    <script>
+        (() => {
+            const savedTheme = localStorage.getItem('sf-theme') || 'light-slate';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+    <style>
+        :root {
+            --sf-bg: #f1f5f9;
+            --sf-panel: #ffffff;
+            --sf-text: #0f172a;
+            --sf-muted: #475569;
+            --sf-border: #cbd5e1;
+            --sf-input-bg: #ffffff;
+            --sf-tag-bg: #e2e8f0;
+            --sf-tag-text: #0f172a;
+            --sf-link: #4338ca;
+            color-scheme: light;
+        }
+        :root[data-theme="light-slate"] { --sf-bg: #f1f5f9; --sf-panel: #ffffff; --sf-text: #0f172a; --sf-muted: #475569; --sf-border: #cbd5e1; --sf-input-bg: #ffffff; --sf-tag-bg: #e2e8f0; --sf-tag-text: #0f172a; --sf-link: #4338ca; color-scheme: light; }
+        :root[data-theme="light-sand"] { --sf-bg: #f8f5ef; --sf-panel: #fffdf8; --sf-text: #2f2315; --sf-muted: #6f5b44; --sf-border: #dfd3c0; --sf-input-bg: #fffaf0; --sf-tag-bg: #eadfce; --sf-tag-text: #2f2315; --sf-link: #92400e; color-scheme: light; }
+        :root[data-theme="light-mint"] { --sf-bg: #ecfdf5; --sf-panel: #f8fffb; --sf-text: #064e3b; --sf-muted: #065f46; --sf-border: #a7f3d0; --sf-input-bg: #ffffff; --sf-tag-bg: #d1fae5; --sf-tag-text: #064e3b; --sf-link: #0f766e; color-scheme: light; }
+        :root[data-theme="light-lavender"] { --sf-bg: #f5f3ff; --sf-panel: #fcfcff; --sf-text: #312e81; --sf-muted: #5b5aa0; --sf-border: #c4b5fd; --sf-input-bg: #ffffff; --sf-tag-bg: #e9e5ff; --sf-tag-text: #312e81; --sf-link: #6d28d9; color-scheme: light; }
+        :root[data-theme="light-sky"] { --sf-bg: #f0f9ff; --sf-panel: #ffffff; --sf-text: #0c4a6e; --sf-muted: #0369a1; --sf-border: #bae6fd; --sf-input-bg: #ffffff; --sf-tag-bg: #dbeafe; --sf-tag-text: #0c4a6e; --sf-link: #1d4ed8; color-scheme: light; }
+        :root[data-theme="dark-slate"] { --sf-bg: #0f172a; --sf-panel: #1e293b; --sf-text: #e2e8f0; --sf-muted: #94a3b8; --sf-border: #475569; --sf-input-bg: #0f172a; --sf-tag-bg: #334155; --sf-tag-text: #e2e8f0; --sf-link: #93c5fd; color-scheme: dark; }
+        :root[data-theme="dark-graphite"] { --sf-bg: #111827; --sf-panel: #1f2937; --sf-text: #f3f4f6; --sf-muted: #9ca3af; --sf-border: #4b5563; --sf-input-bg: #111827; --sf-tag-bg: #374151; --sf-tag-text: #f3f4f6; --sf-link: #a5b4fc; color-scheme: dark; }
+        :root[data-theme="dark-forest"] { --sf-bg: #052e16; --sf-panel: #14532d; --sf-text: #dcfce7; --sf-muted: #86efac; --sf-border: #22c55e; --sf-input-bg: #052e16; --sf-tag-bg: #166534; --sf-tag-text: #dcfce7; --sf-link: #5eead4; color-scheme: dark; }
+        :root[data-theme="dark-plum"] { --sf-bg: #2e1065; --sf-panel: #3b0764; --sf-text: #f5d0fe; --sf-muted: #e879f9; --sf-border: #a855f7; --sf-input-bg: #2e1065; --sf-tag-bg: #581c87; --sf-tag-text: #f5d0fe; --sf-link: #c4b5fd; color-scheme: dark; }
+        :root[data-theme="dark-ocean"] { --sf-bg: #082f49; --sf-panel: #0c4a6e; --sf-text: #e0f2fe; --sf-muted: #7dd3fc; --sf-border: #0284c7; --sf-input-bg: #082f49; --sf-tag-bg: #075985; --sf-tag-text: #e0f2fe; --sf-link: #93c5fd; color-scheme: dark; }
+        body.theme-page { background: var(--sf-bg); color: var(--sf-text); }
+        .theme-container { min-height: calc(100vh - 40px); }
+        .theme-panel { background: var(--sf-panel); color: var(--sf-text); border: 1px solid var(--sf-border); }
+        .theme-input { background: var(--sf-input-bg); color: var(--sf-text); border-color: var(--sf-border); }
+        .theme-muted { color: var(--sf-muted); }
+        .theme-tag { background: var(--sf-tag-bg); color: var(--sf-tag-text); }
+        .theme-link { color: var(--sf-link); }
+        #vditor { min-height: 60vh; }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-900">
-<div class="max-w-7xl mx-auto p-4">
+<body class="theme-page min-h-screen">
+<div class="theme-container w-full p-5">
     <header class="mb-4 flex items-center justify-between">
         <h1 class="text-2xl font-bold">Star-Forge Notes (Draft)</h1>
-        <?php if ($user): ?>
-            <div class="flex gap-2 items-center">
-                <span class="text-sm">Hi, <?= htmlspecialchars($user['username']) ?></span>
+        <div class="flex gap-2 items-center flex-wrap justify-end">
+            <label class="text-sm theme-muted" for="themeSelect">Theme</label>
+            <select id="themeSelect" class="theme-input border rounded px-2 py-1 text-sm">
+                <optgroup label="Light Themes">
+                    <option value="light-slate">Light Slate</option>
+                    <option value="light-sand">Light Sand</option>
+                    <option value="light-mint">Light Mint</option>
+                    <option value="light-lavender">Light Lavender</option>
+                    <option value="light-sky">Light Sky</option>
+                </optgroup>
+                <optgroup label="Dark Themes">
+                    <option value="dark-slate">Dark Slate</option>
+                    <option value="dark-graphite">Dark Graphite</option>
+                    <option value="dark-forest">Dark Forest</option>
+                    <option value="dark-plum">Dark Plum</option>
+                    <option value="dark-ocean">Dark Ocean</option>
+                </optgroup>
+            </select>
+            <?php if ($user): ?>
+                <span class="text-sm theme-muted">Hi, <?= htmlspecialchars($user['username']) ?></span>
                 <?php if (($user['role'] ?? 'user') === 'admin'): ?><a class="px-3 py-1 bg-violet-600 text-white rounded" href="?route=admin">Admin</a><?php endif; ?>
                 <a class="px-3 py-1 bg-slate-700 text-white rounded" href="?route=logout">Logout</a>
-            </div>
-        <?php endif; ?>
+            <?php endif; ?>
+        </div>
     </header>
 
     <?php if ($message): ?><div class="mb-3 p-2 bg-emerald-100 border border-emerald-300 rounded"><?= htmlspecialchars($message) ?></div><?php endif; ?>
     <?php if ($error): ?><div class="mb-3 p-2 bg-rose-100 border border-rose-300 rounded"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
     <?php if ($route === 'login' || $route === 'register'): ?>
-        <div class="max-w-md mx-auto bg-white rounded shadow p-4">
+        <div class="max-w-md mx-auto theme-panel rounded shadow p-4">
             <?php if ($route === 'login'): ?>
                 <h2 class="text-xl font-semibold mb-3">Login</h2>
                 <form method="post" action="?route=login" class="space-y-2">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                    <input class="w-full border rounded p-2" name="username" placeholder="Username" required>
-                    <input class="w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
+                    <input class="theme-input w-full border rounded p-2" name="username" placeholder="Username" required>
+                    <input class="theme-input w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
                     <button class="w-full bg-indigo-600 text-white rounded p-2">Login</button>
                 </form>
-                <p class="text-sm mt-2">No account? <a class="text-indigo-700" href="?route=register">Request Account</a></p>
+                <p class="text-sm mt-2">No account? <a class="theme-link" href="?route=register">Request Account</a></p>
                 <p class="text-xs text-amber-700 mt-3">Draft mode warning: rotate any seed credentials before deployment.</p>
             <?php else: ?>
                 <h2 class="text-xl font-semibold mb-3">Request Account</h2>
                 <form method="post" action="?route=register" class="space-y-2">
                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                    <input class="w-full border rounded p-2" name="username" placeholder="Username" required>
-                    <input class="w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
+                    <input class="theme-input w-full border rounded p-2" name="username" placeholder="Username" required>
+                    <input class="theme-input w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
                     <button class="w-full bg-indigo-600 text-white rounded p-2">Submit Request</button>
                 </form>
-                <p class="text-sm mt-2"><a class="text-indigo-700" href="?route=login">Back to Login</a></p>
+                <p class="text-sm mt-2"><a class="theme-link" href="?route=login">Back to Login</a></p>
             <?php endif; ?>
         </div>
     <?php elseif ($route === 'change-password'): ?>
-        <div class="max-w-md mx-auto bg-white rounded shadow p-4">
+        <div class="max-w-md mx-auto theme-panel rounded shadow p-4">
             <h2 class="text-xl font-semibold mb-3">Change Password</h2>
             <p class="text-sm text-amber-700 mb-3">You must set a new password before continuing.</p>
             <form method="post" action="?route=change-password" class="space-y-2">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                <input class="w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" aria-label="Current password" required>
-                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" aria-label="New password" required>
-                <input class="w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" aria-label="Confirm new password" required>
+                <input class="theme-input w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" aria-label="Current password" required>
+                <input class="theme-input w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" aria-label="New password" required>
+                <input class="theme-input w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" aria-label="Confirm new password" required>
                 <button class="w-full bg-indigo-600 text-white rounded p-2">Update Password</button>
             </form>
         </div>
@@ -275,7 +329,7 @@ if ($route === 'admin') {
     <?php elseif ($route === 'admin'): ?>
         <?php $adminMsg = $_GET['msg'] ?? null; if ($adminMsg): ?><div class="mb-3 p-2 bg-indigo-100 border border-indigo-300 rounded"><?= htmlspecialchars($adminMsg) ?></div><?php endif; ?>
         <?php $users = read_users(); ?>
-        <div class="bg-white rounded shadow p-4">
+        <div class="theme-panel rounded shadow p-4">
             <h2 class="text-xl font-semibold mb-3">Admin Panel</h2>
             <div class="overflow-auto">
                 <table class="w-full text-sm">
@@ -299,7 +353,7 @@ if ($route === 'admin') {
                                 <form method="post" action="?route=admin-action" class="inline-flex gap-1 mt-1">
                                     <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['id']) ?>">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input class="border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" aria-label="Default reset password" required>
+                                    <input class="theme-input border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" aria-label="Default reset password" required>
                                     <button class="px-2 py-1 bg-indigo-600 text-white rounded" name="action" value="reset-password" type="submit">Reset Password</button>
                                 </form>
                                 <?php endif; ?>
@@ -318,7 +372,7 @@ if ($route === 'admin') {
             $files = $structure['files'] ?? [];
         ?>
         <div class="grid grid-cols-12 gap-4">
-            <aside class="col-span-12 md:col-span-3 bg-white rounded shadow p-3">
+            <aside class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
                 <h3 class="font-semibold mb-2">Tree</h3>
                 <ul id="tree" class="space-y-1 text-sm max-h-[45vh] overflow-auto">
                     <?php foreach ($files as $file): ?>
@@ -326,7 +380,7 @@ if ($route === 'admin') {
                     <?php endforeach; ?>
                 </ul>
                 <div class="mt-3 space-y-1">
-                    <input id="newPath" class="w-full border rounded p-2 text-sm" placeholder="folder/my-note.md">
+                    <input id="newPath" class="theme-input w-full border rounded p-2 text-sm" placeholder="folder/my-note.md">
                     <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
                 </div>
                 <div class="mt-3">
@@ -334,17 +388,17 @@ if ($route === 'admin') {
                     <div id="tags" class="flex flex-wrap gap-1 text-xs"></div>
                 </div>
             </aside>
-            <main class="col-span-12 md:col-span-9 bg-white rounded shadow p-3">
+            <main class="col-span-12 md:col-span-9 theme-panel rounded shadow p-3">
                 <div class="flex flex-wrap gap-2 items-center mb-2">
-                    <input id="searchQuery" class="border rounded p-2 text-sm flex-1" placeholder="Search notes...">
-                    <select id="scope" class="border rounded p-2 text-sm"><option value="global">Global</option><option value="folder">In this folder</option></select>
-                    <input id="scopeFolder" class="border rounded p-2 text-sm" placeholder="folder path (optional)">
+                    <input id="searchQuery" class="theme-input border rounded p-2 text-sm flex-1" placeholder="Search notes...">
+                    <select id="scope" class="theme-input border rounded p-2 text-sm"><option value="global">Global</option><option value="folder">In this folder</option></select>
+                    <input id="scopeFolder" class="theme-input border rounded p-2 text-sm" placeholder="folder path (optional)">
                     <button id="searchBtn" class="bg-slate-700 text-white rounded px-3 py-2 text-sm">Search</button>
-                    <span id="activeNote" class="text-sm text-slate-600"></span>
+                    <span id="activeNote" class="text-sm theme-muted"></span>
                 </div>
                 <div id="searchResults" class="text-sm mb-2"></div>
                 <div id="vditor"></div>
-                <textarea id="fallbackEditor" class="w-full min-h-[60vh] border rounded p-2 hidden"></textarea>
+                <textarea id="fallbackEditor" class="theme-input w-full min-h-[60vh] border rounded p-2 hidden"></textarea>
                 <button id="saveBtn" class="mt-2 bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
             </main>
         </div>
@@ -376,7 +430,7 @@ if ($route === 'admin') {
                 if (!out.ok) return;
                 Object.entries(out.tags).forEach(([tag, count]) => {
                     const btn = document.createElement('button');
-                    btn.className = 'px-2 py-1 rounded bg-slate-200';
+                    btn.className = 'px-2 py-1 rounded theme-tag';
                     btn.textContent = `#${tag} (${count})`;
                     btn.onclick = () => {
                         document.getElementById('searchQuery').value = tag;
@@ -431,7 +485,7 @@ if ($route === 'admin') {
                 el.innerHTML = '';
                 (out.results || []).forEach((path) => {
                     const b = document.createElement('button');
-                    b.className = 'mr-2 text-indigo-700 underline';
+                    b.className = 'mr-2 theme-link underline';
                     b.textContent = path;
                     b.onclick = () => openNote(path);
                     el.appendChild(b);
@@ -460,5 +514,27 @@ if ($route === 'admin') {
         </script>
     <?php endif; ?>
 </div>
+<script>
+    (() => {
+        const defaultTheme = 'light-slate';
+        const themes = new Set([
+            'light-slate', 'light-sand', 'light-mint', 'light-lavender', 'light-sky',
+            'dark-slate', 'dark-graphite', 'dark-forest', 'dark-plum', 'dark-ocean',
+        ]);
+
+        const applyTheme = (theme) => {
+            const selectedTheme = themes.has(theme) ? theme : defaultTheme;
+            document.documentElement.setAttribute('data-theme', selectedTheme);
+            localStorage.setItem('sf-theme', selectedTheme);
+        };
+
+        const select = document.getElementById('themeSelect');
+        const savedTheme = localStorage.getItem('sf-theme') || defaultTheme;
+        applyTheme(savedTheme);
+        if (!select) return;
+        select.value = themes.has(savedTheme) ? savedTheme : defaultTheme;
+        select.addEventListener('change', (event) => applyTheme(event.target.value));
+    })();
+</script>
 </body>
 </html>
