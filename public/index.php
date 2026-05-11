@@ -504,9 +504,9 @@ if ($route === 'admin') {
             }
 
             function renderTreeNode(node, container) {
-                const sortByName = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
+                const compareLocaleInsensitive = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
                 Array.from(node.folders.entries())
-                    .sort(([a], [b]) => sortByName(a, b))
+                    .sort(([a], [b]) => compareLocaleInsensitive(a, b))
                     .forEach(([folderName, folderNode]) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
@@ -535,7 +535,7 @@ if ($route === 'admin') {
                     });
 
                 node.files
-                    .sort((a, b) => sortByName(a.name, b.name))
+                    .sort((a, b) => compareLocaleInsensitive(a.name, b.name))
                     .forEach((file) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
@@ -686,11 +686,11 @@ if ($route === 'admin') {
     (() => {
         const config = window.sfThemeConfig;
         if (!config) {
-            console.error('Theme configuration is missing.');
+            console.error('Theme configuration (window.sfThemeConfig) was not initialized. Ensure the theme initialization script runs before this code.');
             return;
         }
         if (!Array.isArray(config.themes)) {
-            console.error('Theme configuration is invalid: themes must be an array.');
+            console.error('Theme configuration is invalid: themes must be an array, received:', typeof config.themes);
             return;
         }
         if (typeof config.defaultTheme !== 'string') {
