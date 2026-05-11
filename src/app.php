@@ -288,6 +288,90 @@ function save_note(string $userId, string $notePath, string $content): ?string
     return null;
 }
 
+function note_last_saved_at(string $userId, string $notePath): ?string
+{
+    $fullPath = note_absolute_path($userId, $notePath);
+    if (!is_file($fullPath)) {
+        return null;
+    }
+
+    $mtime = filemtime($fullPath);
+    if ($mtime === false) {
+        return null;
+    }
+
+    return gmdate('c', $mtime);
+}
+
+function move_note_destination_path(string $fromPath, string $destinationFolder): string
+{
+    $fromPath = normalize_note_path($fromPath);
+    $destinationFolder = normalize_note_path($destinationFolder);
+    $fileName = basename($fromPath);
+    return $destinationFolder === '' ? $fileName : $destinationFolder . '/' . $fileName;
+}
+
+function move_note(string $userId, string $fromPath, string $destinationFolder): ?string
+{
+    $fromPath = normalize_note_path($fromPath);
+    if ($fromPath === '') {
+        return 'Source note path is required.';
+    }
+
+    $targetPath = move_note_destination_path($fromPath, $destinationFolder);
+    if ($targetPath === $fromPath) {
+        return null;
+    }
+
+    $vault = realpath(user_vault_path($userId));
+    $sourceFullPath = note_absolute_path($userId, $fromPath);
+    if (!is_file($sourceFullPath)) {
+        return 'Source note not found.';
+    }
+    $sourceRealPath = realpath($sourceFullPath);
+
+    $targetFullPath = note_absolute_path($userId, $targetPath);
+    $targetDir = dirname($targetFullPath);
+    if (!is_dir($targetDir)) {
+        mkdir($targetDir, 0700, true);
+    }
+    $targetDirRealPath = realpath($targetDir);
+
+    if (
+        $vault === false
+        || $sourceRealPath === false
+        || $targetDirRealPath === false
+        || !str_starts_with($sourceRealPath, $vault)
+        || !str_starts_with($targetDirRealPath, $vault)
+    ) {
+        return 'Invalid note location.';
+    }
+
+    if (is_file($targetFullPath)) {
+        return 'A note with this name already exists in the destination folder.';
+    }
+
+    if (!rename($sourceFullPath, $targetFullPath)) {
+        return 'Unable to move note.';
+    }
+
+    $cursor = dirname($sourceFullPath);
+    while ($cursor !== $vault && str_starts_with($cursor, $vault)) {
+        if (!is_dir($cursor)) {
+            break;
+        }
+        $entries = scandir($cursor);
+        if ($entries === false || count($entries) > 2) {
+            break;
+        }
+        rmdir($cursor);
+        $cursor = dirname($cursor);
+    }
+
+    rebuild_structure($userId);
+    return null;
+}
+
 function read_note(string $userId, string $notePath): ?string
 {
     $fullPath = note_absolute_path($userId, $notePath);
