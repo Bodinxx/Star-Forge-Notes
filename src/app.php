@@ -6,6 +6,7 @@ const ROOT_PATH = __DIR__ . '/..';
 const DATA_PATH = ROOT_PATH . '/data';
 const USERS_FILE = DATA_PATH . '/users.json';
 const VAULTS_PATH = ROOT_PATH . '/vaults';
+const MIN_PASSWORD_LENGTH = 8;
 
 function app_bootstrap(): void
 {
@@ -162,8 +163,8 @@ function request_account(string $username, string $password): ?string
     if (!preg_match('/^[a-z0-9_\-]{3,30}$/', $username)) {
         return 'Username must be 3-30 chars: letters, numbers, _ or -.';
     }
-    if (strlen($password) < 8) {
-        return 'Password must be at least 8 characters.';
+    if (strlen($password) < MIN_PASSWORD_LENGTH) {
+        return 'Password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.';
     }
 
     $users = read_users();

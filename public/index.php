@@ -38,8 +38,8 @@ if ($route === 'change-password' && $method === 'POST') {
         $newPassword = $_POST['new_password'] ?? '';
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
-        if (strlen($newPassword) < 8) {
-            throw new RuntimeException('New password must be at least 8 characters.');
+        if (strlen($newPassword) < MIN_PASSWORD_LENGTH) {
+            throw new RuntimeException('New password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.');
         }
         if ($newPassword !== $confirmPassword) {
             throw new RuntimeException('New password and confirmation do not match.');
@@ -90,7 +90,7 @@ if ($route === 'admin-action' && $method === 'POST') {
     $users = read_users();
     $userId = trim($_POST['user_id'] ?? '');
     $action = trim($_POST['action'] ?? '');
-    $defaultPassword = $_POST['default_password'] ?? '';
+    $defaultPassword = trim($_POST['default_password'] ?? '');
     $adminActionError = null;
 
     foreach ($users as &$u) {
@@ -108,8 +108,8 @@ if ($route === 'admin-action' && $method === 'POST') {
             $u['__delete'] = true;
             $message = "Deleted {$u['username']}";
         } elseif ($action === 'reset-password') {
-            if (strlen($defaultPassword) < 8) {
-                $adminActionError = 'Default password must be at least 8 characters.';
+            if (strlen($defaultPassword) < MIN_PASSWORD_LENGTH) {
+                $adminActionError = 'Default password must be at least ' . MIN_PASSWORD_LENGTH . ' characters.';
             } else {
                 $u['password_hash'] = password_hash($defaultPassword, PASSWORD_DEFAULT);
                 $u['force_password_change'] = true;
@@ -266,7 +266,7 @@ if ($route === 'admin') {
             <form method="post" action="?route=change-password" class="space-y-2">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                 <input class="w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" required>
-                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (8+ chars)" required>
+                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" required>
                 <input class="w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" required>
                 <button class="w-full bg-indigo-600 text-white rounded p-2">Update Password</button>
             </form>
