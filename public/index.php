@@ -328,6 +328,38 @@ if ($route === 'admin') {
         .editor-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
         #rawEditor { flex: 1; min-height: 0; resize: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875rem; line-height: 1.6; }
         #vditor { flex: 1; min-height: 0; }
+        /* Aside tab bar and panels */
+        #asideTabBar { flex-shrink: 0; display: flex; align-items: center; gap: 2px; padding-bottom: 4px; border-bottom: 1px solid var(--sf-border); margin-bottom: 6px; }
+        .aside-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+        #searchResults { flex: 1; min-height: 0; overflow-y: auto; }
+        /* Save button states */
+        #saveBtn { transition: background-color 0.2s; }
+        #saveBtn.save-idle { background-color: #6b7280; opacity: 0.7; cursor: default; }
+        #saveBtn.save-dirty { background-color: #16a34a; }
+        /* Vditor dark mode: fix heading text color */
+        [data-theme^="dark-"] .vditor-wysiwyg,
+        [data-theme^="dark-"] .vditor-ir { color: var(--sf-text); }
+        [data-theme^="dark-"] .vditor-wysiwyg h1,
+        [data-theme^="dark-"] .vditor-wysiwyg h2,
+        [data-theme^="dark-"] .vditor-wysiwyg h3,
+        [data-theme^="dark-"] .vditor-wysiwyg h4,
+        [data-theme^="dark-"] .vditor-wysiwyg h5,
+        [data-theme^="dark-"] .vditor-wysiwyg h6,
+        [data-theme^="dark-"] .vditor-ir h1,
+        [data-theme^="dark-"] .vditor-ir h2,
+        [data-theme^="dark-"] .vditor-ir h3,
+        [data-theme^="dark-"] .vditor-ir h4,
+        [data-theme^="dark-"] .vditor-ir h5,
+        [data-theme^="dark-"] .vditor-ir h6 { color: var(--sf-text) !important; }
+        /* Vditor dark mode: reverse code block colors */
+        [data-theme^="dark-"] .vditor-wysiwyg pre,
+        [data-theme^="dark-"] .vditor-wysiwyg pre code,
+        [data-theme^="dark-"] .vditor-ir pre,
+        [data-theme^="dark-"] .vditor-ir pre code,
+        [data-theme^="dark-"] .vditor-wysiwyg code,
+        [data-theme^="dark-"] .vditor-ir code { background-color: #0f172a !important; color: #e2e8f0 !important; }
+        [data-theme^="dark-"] .vditor-wysiwyg pre .hljs,
+        [data-theme^="dark-"] .vditor-ir pre .hljs { background-color: #0f172a !important; color: #e2e8f0 !important; }
     </style>
 </head>
 <body class="theme-page min-h-screen">
@@ -445,32 +477,43 @@ if ($route === 'admin') {
             $files = $structure['files'] ?? [];
         ?>
         <div id="appGrid" class="grid grid-cols-12 gap-4">
-            <aside id="editorAside" class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
-                <h3 class="font-semibold mb-2 flex-shrink-0">Tree</h3>
-                <ul id="tree" class="tree-root text-sm"></ul>
-                <div class="mt-3 space-y-1">
-                    <datalist id="folderList"></datalist>
-                    <input id="newFolder" list="folderList" class="theme-input w-full border rounded p-2 text-sm" placeholder="Folder (optional)">
-                    <div class="flex items-center gap-1">
-                        <input id="newFileName" class="theme-input flex-1 border rounded p-2 text-sm" placeholder="File name">
-                        <span class="text-xs theme-muted whitespace-nowrap">.md</span>
-                    </div>
-                    <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
+        <aside id="editorAside" class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
+                <div id="asideTabBar">
+                    <button id="asideTreeBtn" class="tab-btn tab-active">Tree</button>
+                    <button id="asideSearchBtn" class="tab-btn">Search</button>
                 </div>
-                <div class="mt-3">
-                    <h4 class="font-semibold mb-1">Tags</h4>
-                    <div id="tags" class="flex flex-wrap gap-1 text-xs"></div>
+                <!-- Tree panel -->
+                <div id="asideTreePanel" class="aside-panel">
+                    <ul id="tree" class="tree-root text-sm"></ul>
+                    <div class="mt-3 space-y-1 flex-shrink-0">
+                        <datalist id="folderList"></datalist>
+                        <div class="flex items-center gap-1 flex-wrap">
+                            <input id="newFolder" list="folderList" class="theme-input border rounded p-2 text-sm flex-1 min-w-0" style="min-width:80px" placeholder="Folder (optional)">
+                            <span class="text-xs theme-muted">/</span>
+                            <input id="newFileName" class="theme-input border rounded p-2 text-sm flex-1 min-w-0" style="min-width:60px" placeholder="File name">
+                            <span class="text-xs theme-muted whitespace-nowrap">.md</span>
+                        </div>
+                        <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
+                    </div>
+                    <div class="mt-3 flex-shrink-0">
+                        <h4 class="font-semibold mb-1">Tags</h4>
+                        <div id="tags" class="flex flex-wrap gap-1 text-xs"></div>
+                    </div>
+                </div>
+                <!-- Search panel -->
+                <div id="asideSearchPanel" class="aside-panel hidden">
+                    <div class="space-y-1 mb-2 flex-shrink-0">
+                        <input id="searchQuery" class="theme-input w-full border rounded p-2 text-sm" placeholder="Search notes...">
+                        <div class="flex gap-1">
+                            <select id="scope" class="theme-input border rounded p-2 text-sm flex-1"><option value="global">Global</option><option value="folder">In this folder</option></select>
+                            <input id="scopeFolder" class="theme-input border rounded p-2 text-sm flex-1" placeholder="folder (optional)">
+                        </div>
+                        <button id="searchBtn" class="w-full bg-slate-700 text-white rounded px-3 py-2 text-sm">Search</button>
+                    </div>
+                    <div id="searchResults" class="text-sm"></div>
                 </div>
             </aside>
             <main id="editorMain" class="col-span-12 md:col-span-9 theme-panel rounded shadow p-3">
-                <div class="flex flex-wrap gap-2 items-center mb-2 flex-shrink-0">
-                    <input id="searchQuery" class="theme-input border rounded p-2 text-sm flex-1" placeholder="Search notes...">
-                    <select id="scope" class="theme-input border rounded p-2 text-sm"><option value="global">Global</option><option value="folder">In this folder</option></select>
-                    <input id="scopeFolder" class="theme-input border rounded p-2 text-sm" placeholder="folder path (optional)">
-                    <button id="searchBtn" class="bg-slate-700 text-white rounded px-3 py-2 text-sm">Search</button>
-                    <span id="activeNote" class="text-sm theme-muted"></span>
-                </div>
-                <div id="searchResults" class="text-sm mb-2 flex-shrink-0"></div>
                 <div id="editorArea" class="editor-area">
                     <div id="editorTabBar">
                         <button id="tabRichBtn" class="tab-btn tab-active">Rich Editor</button>
@@ -483,15 +526,16 @@ if ($route === 'admin') {
                         <textarea id="rawEditor" class="theme-input w-full border rounded p-2"></textarea>
                     </div>
                 </div>
-                <div class="flex gap-2 mt-2 flex-shrink-0">
-                    <button id="saveBtn" class="bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
+                <div class="flex gap-2 mt-2 flex-shrink-0 items-center">
+                    <button id="saveBtn" class="save-idle text-white rounded px-3 py-2 text-sm">Save Now</button>
+                    <span id="activeNote" class="text-sm theme-muted truncate"></span>
                 </div>
             </main>
         </div>
         <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
-            const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich' };
+            const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich', isDirty: false };
             const csrfToken = <?= json_encode($csrfToken) ?>;
             const TREE_NOTE_SELECTOR = 'button[data-note]';
             // Approximate pixel offset (header + search bar + tab bar + save row + padding) used
@@ -671,10 +715,47 @@ if ($route === 'admin') {
                     btn.textContent = `#${tag} (${count})`;
                     btn.onclick = () => {
                         document.getElementById('searchQuery').value = tag;
+                        switchAsideTab('search');
                         document.getElementById('searchBtn').click();
                     };
                     el.appendChild(btn);
                 });
+            }
+
+            function updateSaveButton() {
+                const btn = document.getElementById('saveBtn');
+                if (state.isDirty) {
+                    btn.classList.remove('save-idle');
+                    btn.classList.add('save-dirty');
+                    btn.disabled = false;
+                } else {
+                    btn.classList.remove('save-dirty');
+                    btn.classList.add('save-idle');
+                    btn.disabled = true;
+                }
+            }
+
+            function markDirty() {
+                if (!state.isDirty) {
+                    state.isDirty = true;
+                    updateSaveButton();
+                }
+            }
+
+            function markClean() {
+                state.isDirty = false;
+                updateSaveButton();
+            }
+
+            function switchAsideTab(tab) {
+                const treePanel = document.getElementById('asideTreePanel');
+                const searchPanel = document.getElementById('asideSearchPanel');
+                const treeBtn = document.getElementById('asideTreeBtn');
+                const searchBtn = document.getElementById('asideSearchBtn');
+                treePanel.classList.toggle('hidden', tab !== 'tree');
+                searchPanel.classList.toggle('hidden', tab !== 'search');
+                treeBtn.classList.toggle('tab-active', tab === 'tree');
+                searchBtn.classList.toggle('tab-active', tab === 'search');
             }
 
             async function openNote(path) {
@@ -683,16 +764,19 @@ if ($route === 'admin') {
                 highlightActiveTreeNote();
                 const out = await api({ action: 'load', path });
                 contentSet(out.content || '');
+                markClean();
             }
 
             async function saveCurrent() {
                 if (!state.activeNote) return;
                 await api({ action: 'save', path: state.activeNote, content: contentGet() });
+                markClean();
             }
 
             function wireAutosave() {
                 if (state.editor) {
                     state.editor.vditor.element.addEventListener('input', () => {
+                        markDirty();
                         clearTimeout(state.autosaveTimer);
                         state.autosaveTimer = setTimeout(saveCurrent, AUTOSAVE_DEBOUNCE_MS);
                     });
@@ -701,6 +785,7 @@ if ($route === 'admin') {
 
             let rawSyncTimer = null;
             rawEditorEl.addEventListener('input', () => {
+                markDirty();
                 clearTimeout(state.autosaveTimer);
                 state.autosaveTimer = setTimeout(saveCurrent, AUTOSAVE_DEBOUNCE_MS);
                 if (state.editor) {
@@ -711,6 +796,8 @@ if ($route === 'admin') {
 
             document.getElementById('tabRichBtn').addEventListener('click', () => switchTab('rich'));
             document.getElementById('tabSourceBtn').addEventListener('click', () => switchTab('source'));
+            document.getElementById('asideTreeBtn').addEventListener('click', () => switchAsideTab('tree'));
+            document.getElementById('asideSearchBtn').addEventListener('click', () => switchAsideTab('search'));
             window.addEventListener('resize', adjustEditorHeight);
 
             document.getElementById('tree').addEventListener('click', (event) => {
@@ -758,7 +845,7 @@ if ($route === 'admin') {
                 el.innerHTML = '';
                 (out.results || []).forEach((path) => {
                     const b = document.createElement('button');
-                    b.className = 'mr-2 theme-link underline';
+                    b.className = 'block w-full text-left py-0.5 theme-link underline text-sm';
                     b.textContent = path;
                     b.onclick = () => openNote(path);
                     el.appendChild(b);
@@ -806,6 +893,7 @@ if ($route === 'admin') {
                 renderTree(treeFiles);
                 populateFolderList(treeFiles);
                 setTimeout(wireAutosave, 500);
+                updateSaveButton();
                 await loadTags();
             })();
         </script>
