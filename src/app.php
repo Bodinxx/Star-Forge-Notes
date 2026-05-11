@@ -424,9 +424,7 @@ function archive_note(string $userId, string $notePath): ?string
     if ($notePath === '') {
         return 'Note path is required.';
     }
-    $notePathLower = strtolower($notePath);
-    $archivePrefixLower = strtolower(ARCHIVE_FOLDER_NAME);
-    if ($notePathLower === $archivePrefixLower || str_starts_with($notePathLower, $archivePrefixLower . '/')) {
+    if ($notePath === ARCHIVE_FOLDER_NAME || str_starts_with($notePath, ARCHIVE_FOLDER_NAME . '/')) {
         return 'Note is already archived.';
     }
 
@@ -489,7 +487,7 @@ function rebuild_structure(string $userId): array
     if ($writeResult === false) {
         $lastError = error_get_last();
         $details = is_array($lastError) && isset($lastError['message']) ? ' (' . $lastError['message'] . ')' : '';
-        throw new RuntimeException('Failed to write structure.json for vault: ' . $vault . $details);
+        throw new RuntimeException('Failed to write structure.json.' . $details);
     }
 
     return $structure;

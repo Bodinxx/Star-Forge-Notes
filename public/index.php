@@ -735,8 +735,8 @@ if ($route === 'admin') {
             }
 
             function folderSortCompare(left, right) {
-                const leftIsArchive = left.toLowerCase() === JS_ARCHIVE_FOLDER_NAME.toLowerCase();
-                const rightIsArchive = right.toLowerCase() === JS_ARCHIVE_FOLDER_NAME.toLowerCase();
+                const leftIsArchive = left === JS_ARCHIVE_FOLDER_NAME;
+                const rightIsArchive = right === JS_ARCHIVE_FOLDER_NAME;
                 if (leftIsArchive && !rightIsArchive) return 1;
                 if (!leftIsArchive && rightIsArchive) return -1;
                 return caseInsensitiveCompare(left, right);
