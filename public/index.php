@@ -622,7 +622,7 @@ if ($route === 'admin') {
                         </div>
                         <div class="flex gap-1">
                             <button id="createBtn" class="flex-1 bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
-                            <button id="createFolderBtn" class="flex-1 bg-slate-800 text-white rounded p-2 text-sm">Create Folder</button>
+                            <button id="createFolderBtn" class="flex-1 bg-slate-800 text-white rounded p-2 text-sm" aria-label="Create folder">Create Folder</button>
                         </div>
                     </div>
                     <div class="mt-3 flex-shrink-0">
@@ -842,6 +842,7 @@ if ($route === 'admin') {
                         archiveBtn.className = 'tree-note-action tree-note-archive';
                         archiveBtn.dataset.noteArchive = file.path;
                         archiveBtn.title = 'Archive note';
+                        archiveBtn.setAttribute('aria-label', `Archive note ${file.name}`);
                         archiveBtn.textContent = '🗄️';
 
                         const deleteBtn = document.createElement('button');
@@ -849,6 +850,7 @@ if ($route === 'admin') {
                         deleteBtn.className = 'tree-note-action tree-note-delete';
                         deleteBtn.dataset.noteDelete = file.path;
                         deleteBtn.title = 'Delete note';
+                        deleteBtn.setAttribute('aria-label', `Delete note ${file.name}`);
                         deleteBtn.textContent = '🗑️';
 
                         row.append(btn, archiveBtn, deleteBtn);

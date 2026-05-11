@@ -485,7 +485,10 @@ function rebuild_structure(string $userId): array
         'folders' => $folders,
     ];
 
-    file_put_contents($vault . '/structure.json', json_encode($structure, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    $writeResult = file_put_contents($vault . '/structure.json', json_encode($structure, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n", LOCK_EX);
+    if ($writeResult === false) {
+        throw new RuntimeException('Unable to write structure index.');
+    }
 
     return $structure;
 }
