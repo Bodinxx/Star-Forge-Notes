@@ -265,9 +265,9 @@ if ($route === 'admin') {
             <p class="text-sm text-amber-700 mb-3">You must set a new password before continuing.</p>
             <form method="post" action="?route=change-password" class="space-y-2">
                 <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                <input class="w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" required>
-                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" required>
-                <input class="w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" required>
+                <input class="w-full border rounded p-2" type="password" name="current_password" placeholder="Current Password" aria-label="Current password" required>
+                <input class="w-full border rounded p-2" type="password" name="new_password" placeholder="New Password (<?= MIN_PASSWORD_LENGTH ?>+ chars)" aria-label="New password" required>
+                <input class="w-full border rounded p-2" type="password" name="confirm_password" placeholder="Confirm New Password" aria-label="Confirm new password" required>
                 <button class="w-full bg-indigo-600 text-white rounded p-2">Update Password</button>
             </form>
         </div>
@@ -299,7 +299,7 @@ if ($route === 'admin') {
                                 <form method="post" action="?route=admin-action" class="inline-flex gap-1 mt-1">
                                     <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['id']) ?>">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input class="border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" required>
+                                    <input class="border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" aria-label="Default reset password" required>
                                     <button class="px-2 py-1 bg-indigo-600 text-white rounded" name="action" value="reset-password" type="submit">Reset Password</button>
                                 </form>
                                 <?php endif; ?>
