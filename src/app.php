@@ -307,7 +307,7 @@ function move_note_destination_path(string $fromPath, string $destinationFolder)
 {
     $fromPath = normalize_note_path($fromPath);
     $destinationFolder = normalize_note_path($destinationFolder);
-    $fileName = basename($fromPath);
+    $fileName = pathinfo($fromPath, PATHINFO_BASENAME);
     return $destinationFolder === '' ? $fileName : $destinationFolder . '/' . $fileName;
 }
 
@@ -361,7 +361,7 @@ function move_note(string $userId, string $fromPath, string $destinationFolder):
             break;
         }
         $entries = scandir($cursor);
-        if ($entries === false || count($entries) > 2) {
+        if ($entries === false || count(array_diff($entries, ['.', '..'])) !== 0) {
             break;
         }
         if (!rmdir($cursor)) {
