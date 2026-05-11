@@ -303,6 +303,19 @@ if ($route === 'admin') {
         .theme-muted { color: var(--sf-muted); }
         .theme-tag { background: var(--sf-tag-bg); color: var(--sf-tag-text); }
         .theme-link { color: var(--sf-link); }
+        .tree-root, .tree-branch { list-style: none; margin: 0; padding-left: 0; }
+        .tree-item { margin: 2px 0; }
+        .tree-folder { margin: 0; }
+        .tree-folder > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 4px; }
+        .tree-folder > summary::-webkit-details-marker { display: none; }
+        .tree-caret { width: 10px; color: var(--sf-muted); font-size: 11px; text-align: center; }
+        .tree-folder[open] > summary .tree-caret::before { content: "▾"; }
+        .tree-folder:not([open]) > summary .tree-caret::before { content: "▸"; }
+        .tree-folder-icon, .tree-file-icon { color: var(--sf-muted); width: 14px; text-align: center; }
+        .tree-branch { margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--sf-border); }
+        .tree-note-button { display: inline-flex; align-items: center; gap: 6px; width: 100%; text-align: left; border-radius: 4px; padding: 2px 4px; }
+        .tree-note-button:hover, .tree-folder > summary:hover { background: color-mix(in srgb, var(--sf-tag-bg) 55%, transparent); }
+        .tree-note-button.is-active { background: color-mix(in srgb, var(--sf-tag-bg) 85%, transparent); font-weight: 600; }
         #vditor { min-height: 60vh; }
     </style>
 </head>
@@ -423,11 +436,7 @@ if ($route === 'admin') {
         <div class="grid grid-cols-12 gap-4">
             <aside class="col-span-12 md:col-span-3 theme-panel rounded shadow p-3">
                 <h3 class="font-semibold mb-2">Tree</h3>
-                <ul id="tree" class="space-y-1 text-sm max-h-[45vh] overflow-auto">
-                    <?php foreach ($files as $file): ?>
-                        <li><button class="text-left w-full hover:underline" data-note="<?= htmlspecialchars($file) ?>"><?= htmlspecialchars($file) ?></button></li>
-                    <?php endforeach; ?>
-                </ul>
+                <ul id="tree" class="tree-root text-sm max-h-[45vh] overflow-auto"></ul>
                 <div class="mt-3 space-y-1">
                     <input id="newPath" class="theme-input w-full border rounded p-2 text-sm" placeholder="folder/my-note.md">
                     <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
@@ -455,6 +464,7 @@ if ($route === 'admin') {
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null };
             const csrfToken = <?= json_encode($csrfToken) ?>;
+            const treeFiles = <?= json_encode($files, JSON_UNESCAPED_SLASHES) ?>;
 
             async function api(payload) {
                 const body = new URLSearchParams({ ...payload, csrf: csrfToken });
@@ -470,6 +480,109 @@ if ($route === 'admin') {
             function contentSet(value) {
                 if (state.editor) state.editor.setValue(value || '');
                 else document.getElementById('fallbackEditor').value = value || '';
+            }
+
+            function buildTree(paths) {
+                const root = { folders: new Map(), files: [] };
+                paths.forEach((path) => {
+                    const parts = path.split('/').filter(Boolean);
+                    if (!parts.length) return;
+                    let node = root;
+                    parts.forEach((part, index) => {
+                        const isFile = index === parts.length - 1;
+                        if (isFile) {
+                            node.files.push({ name: part, path });
+                            return;
+                        }
+                        if (!node.folders.has(part)) {
+                            node.folders.set(part, { folders: new Map(), files: [] });
+                        }
+                        node = node.folders.get(part);
+                    });
+                });
+                return root;
+            }
+
+            function renderTreeNode(node, container) {
+                Array.from(node.folders.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .forEach(([folderName, folderNode]) => {
+                        const item = document.createElement('li');
+                        item.className = 'tree-item';
+
+                        const details = document.createElement('details');
+                        details.className = 'tree-folder';
+                        details.open = true;
+
+                        const summary = document.createElement('summary');
+                        const caret = document.createElement('span');
+                        caret.className = 'tree-caret';
+                        const folderIcon = document.createElement('span');
+                        folderIcon.className = 'tree-folder-icon';
+                        folderIcon.textContent = '📁';
+                        const label = document.createElement('span');
+                        label.textContent = folderName;
+                        summary.append(caret, folderIcon, label);
+                        details.appendChild(summary);
+
+                        const branch = document.createElement('ul');
+                        branch.className = 'tree-branch';
+                        renderTreeNode(folderNode, branch);
+                        details.appendChild(branch);
+                        item.appendChild(details);
+                        container.appendChild(item);
+                    });
+
+                node.files
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .forEach((file) => {
+                        const item = document.createElement('li');
+                        item.className = 'tree-item';
+
+                        const btn = document.createElement('button');
+                        btn.className = 'tree-note-button';
+                        btn.dataset.note = file.path;
+
+                        const fileIcon = document.createElement('span');
+                        fileIcon.className = 'tree-file-icon';
+                        fileIcon.textContent = '📄';
+
+                        const label = document.createElement('span');
+                        label.textContent = file.name;
+                        btn.append(fileIcon, label);
+
+                        item.appendChild(btn);
+                        container.appendChild(item);
+                    });
+            }
+
+            function renderTree(paths) {
+                const tree = document.getElementById('tree');
+                tree.innerHTML = '';
+                if (!paths.length) {
+                    const empty = document.createElement('li');
+                    empty.className = 'theme-muted';
+                    empty.textContent = 'No notes yet.';
+                    tree.appendChild(empty);
+                    return;
+                }
+                const root = buildTree(paths);
+                renderTreeNode(root, tree);
+            }
+
+            function highlightActiveTreeNote() {
+                const buttons = document.querySelectorAll('#tree [data-note]');
+                buttons.forEach((btn) => {
+                    const active = btn.dataset.note === state.activeNote;
+                    btn.classList.toggle('is-active', active);
+                    if (active) {
+                        let parent = btn.parentElement;
+                        while (parent) {
+                            if (parent.tagName === 'DETAILS') parent.open = true;
+                            parent = parent.parentElement;
+                        }
+                    }
+                });
             }
 
             async function loadTags() {
@@ -492,6 +605,7 @@ if ($route === 'admin') {
             async function openNote(path) {
                 state.activeNote = path;
                 document.getElementById('activeNote').textContent = path;
+                highlightActiveTreeNote();
                 const out = await api({ action: 'load', path });
                 contentSet(out.content || '');
             }
@@ -509,8 +623,10 @@ if ($route === 'admin') {
                 });
             }
 
-            document.querySelectorAll('[data-note]').forEach((btn) => {
-                btn.addEventListener('click', () => openNote(btn.dataset.note));
+            document.getElementById('tree').addEventListener('click', (event) => {
+                const target = event.target.closest('button[data-note]');
+                if (!target) return;
+                openNote(target.dataset.note);
             });
 
             document.getElementById('createBtn').addEventListener('click', async () => {
@@ -547,6 +663,7 @@ if ($route === 'admin') {
                         state.editor = new Vditor('vditor', {
                             height: 560,
                             mode: 'wysiwyg',
+                            lang: 'en_US',
                             cache: { enable: false }
                         });
                     } else {
@@ -557,6 +674,7 @@ if ($route === 'admin') {
                     document.getElementById('vditor').classList.add('hidden');
                     document.getElementById('fallbackEditor').classList.remove('hidden');
                 }
+                renderTree(treeFiles);
                 setTimeout(wireAutosave, 500);
                 await loadTags();
             })();
