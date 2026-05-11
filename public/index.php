@@ -622,7 +622,7 @@ if ($route === 'admin') {
                         </div>
                         <div class="flex gap-1">
                             <button id="createBtn" class="flex-1 bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
-                            <button id="createFolderBtn" class="flex-1 bg-slate-700 text-white rounded p-2 text-sm">Create Folder</button>
+                            <button id="createFolderBtn" class="flex-1 bg-slate-800 text-white rounded p-2 text-sm">Create Folder</button>
                         </div>
                     </div>
                     <div class="mt-3 flex-shrink-0">
@@ -1221,6 +1221,7 @@ if ($route === 'admin') {
                 if (!out.ok) return alert(out.error || 'Failed');
                 applyStructure(out.structure);
                 document.getElementById('newFileName').value = '';
+                document.getElementById('newFolder').value = '';
                 await openNote(path);
                 await loadTags();
             });
@@ -1234,6 +1235,7 @@ if ($route === 'admin') {
                 const out = await api({ action: 'create_folder', path: folder });
                 if (!out.ok) return alert(out.error || 'Failed');
                 applyStructure(out.structure);
+                document.getElementById('newFolder').value = '';
             });
 
             document.getElementById('saveBtn').addEventListener('click', saveCurrent);
