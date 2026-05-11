@@ -165,14 +165,39 @@ if ($route === 'api' && $method === 'POST') {
         }
 
         if ($action === 'save') {
-            $err = save_note($user['id'], $_POST['path'] ?? '', $_POST['content'] ?? '');
-            echo json_encode(['ok' => $err === null, 'error' => $err]);
+            $notePath = $_POST['path'] ?? '';
+            $err = save_note($user['id'], $notePath, $_POST['content'] ?? '');
+            echo json_encode([
+                'ok' => $err === null,
+                'error' => $err,
+                'last_saved_at' => $err === null ? note_last_saved_at_utc($user['id'], $notePath) : null,
+            ]);
             exit;
         }
 
         if ($action === 'load') {
-            $content = read_note($user['id'], $_POST['path'] ?? '');
-            echo json_encode(['ok' => $content !== null, 'content' => $content]);
+            $notePath = $_POST['path'] ?? '';
+            $content = read_note($user['id'], $notePath);
+            echo json_encode([
+                'ok' => $content !== null,
+                'content' => $content,
+                'last_saved_at' => $content !== null ? note_last_saved_at_utc($user['id'], $notePath) : null,
+            ]);
+            exit;
+        }
+
+        if ($action === 'move') {
+            $from = $_POST['from'] ?? '';
+            $toFolder = $_POST['to_folder'] ?? '';
+            $err = move_note($user['id'], $from, $toFolder);
+            $movedPath = move_note_destination_path($from, $toFolder);
+            echo json_encode([
+                'ok' => $err === null,
+                'error' => $err,
+                'moved_path' => $err === null ? $movedPath : null,
+                'last_saved_at' => $err === null ? note_last_saved_at_utc($user['id'], $movedPath) : null,
+                'structure' => $err === null ? get_structure($user['id']) : null,
+            ]);
             exit;
         }
 
@@ -254,6 +279,15 @@ if ($route === 'admin') {
             --sf-tag-bg: #e2e8f0;
             --sf-tag-text: #0f172a;
             --sf-link: #4338ca;
+            --sf-status-success-bg: #dcfce7;
+            --sf-status-success-border: #86efac;
+            --sf-status-success-text: #14532d;
+            --sf-status-error-bg: #fee2e2;
+            --sf-status-error-border: #fca5a5;
+            --sf-status-error-text: #7f1d1d;
+            --sf-status-info-bg: #dbeafe;
+            --sf-status-info-border: #93c5fd;
+            --sf-status-info-text: #1e3a8a;
             color-scheme: light;
         }
         :root[data-theme="light-slate"] {
@@ -279,22 +313,37 @@ if ($route === 'admin') {
         :root[data-theme="dark-slate"] {
             --sf-bg: #0f172a; --sf-panel: #1e293b; --sf-text: #e2e8f0; --sf-muted: #94a3b8; --sf-border: #475569;
             --sf-input-bg: #0f172a; --sf-tag-bg: #334155; --sf-tag-text: #e2e8f0; --sf-link: #93c5fd; color-scheme: dark;
+            --sf-status-success-bg: #14532d; --sf-status-success-border: #16a34a; --sf-status-success-text: #dcfce7;
+            --sf-status-error-bg: #7f1d1d; --sf-status-error-border: #ef4444; --sf-status-error-text: #fee2e2;
+            --sf-status-info-bg: #1e3a8a; --sf-status-info-border: #3b82f6; --sf-status-info-text: #dbeafe;
         }
         :root[data-theme="dark-graphite"] {
             --sf-bg: #111827; --sf-panel: #1f2937; --sf-text: #f3f4f6; --sf-muted: #9ca3af; --sf-border: #4b5563;
             --sf-input-bg: #111827; --sf-tag-bg: #374151; --sf-tag-text: #f3f4f6; --sf-link: #a5b4fc; color-scheme: dark;
+            --sf-status-success-bg: #14532d; --sf-status-success-border: #16a34a; --sf-status-success-text: #dcfce7;
+            --sf-status-error-bg: #7f1d1d; --sf-status-error-border: #ef4444; --sf-status-error-text: #fee2e2;
+            --sf-status-info-bg: #1e3a8a; --sf-status-info-border: #3b82f6; --sf-status-info-text: #dbeafe;
         }
         :root[data-theme="dark-forest"] {
             --sf-bg: #052e16; --sf-panel: #14532d; --sf-text: #dcfce7; --sf-muted: #86efac; --sf-border: #15803d;
             --sf-input-bg: #052e16; --sf-tag-bg: #166534; --sf-tag-text: #dcfce7; --sf-link: #5eead4; color-scheme: dark;
+            --sf-status-success-bg: #14532d; --sf-status-success-border: #22c55e; --sf-status-success-text: #dcfce7;
+            --sf-status-error-bg: #7f1d1d; --sf-status-error-border: #f87171; --sf-status-error-text: #fee2e2;
+            --sf-status-info-bg: #1e3a8a; --sf-status-info-border: #60a5fa; --sf-status-info-text: #dbeafe;
         }
         :root[data-theme="dark-plum"] {
             --sf-bg: #2e1065; --sf-panel: #3b0764; --sf-text: #f5d0fe; --sf-muted: #e879f9; --sf-border: #a855f7;
             --sf-input-bg: #2e1065; --sf-tag-bg: #581c87; --sf-tag-text: #f5d0fe; --sf-link: #c4b5fd; color-scheme: dark;
+            --sf-status-success-bg: #14532d; --sf-status-success-border: #22c55e; --sf-status-success-text: #dcfce7;
+            --sf-status-error-bg: #7f1d1d; --sf-status-error-border: #f87171; --sf-status-error-text: #fee2e2;
+            --sf-status-info-bg: #1e3a8a; --sf-status-info-border: #60a5fa; --sf-status-info-text: #dbeafe;
         }
         :root[data-theme="dark-ocean"] {
             --sf-bg: #082f49; --sf-panel: #0c4a6e; --sf-text: #e0f2fe; --sf-muted: #7dd3fc; --sf-border: #0284c7;
             --sf-input-bg: #082f49; --sf-tag-bg: #075985; --sf-tag-text: #e0f2fe; --sf-link: #93c5fd; color-scheme: dark;
+            --sf-status-success-bg: #14532d; --sf-status-success-border: #22c55e; --sf-status-success-text: #dcfce7;
+            --sf-status-error-bg: #7f1d1d; --sf-status-error-border: #f87171; --sf-status-error-text: #fee2e2;
+            --sf-status-info-bg: #1e3a8a; --sf-status-info-border: #60a5fa; --sf-status-info-text: #dbeafe;
         }
         body.theme-page { background: var(--sf-bg); color: var(--sf-text); }
         .theme-container { --sf-shell-padding: 20px; height: 100vh; height: 100dvh; padding: var(--sf-shell-padding); display: flex; flex-direction: column; overflow-y: auto; box-sizing: border-box; }
@@ -303,6 +352,10 @@ if ($route === 'admin') {
         .theme-muted { color: var(--sf-muted); }
         .theme-tag { background: var(--sf-tag-bg); color: var(--sf-tag-text); }
         .theme-link { color: var(--sf-link); }
+        .status-banner { border-width: 1px; border-style: solid; }
+        .status-banner-success { background: var(--sf-status-success-bg); border-color: var(--sf-status-success-border); color: var(--sf-status-success-text); }
+        .status-banner-error { background: var(--sf-status-error-bg); border-color: var(--sf-status-error-border); color: var(--sf-status-error-text); }
+        .status-banner-info { background: var(--sf-status-info-bg); border-color: var(--sf-status-info-border); color: var(--sf-status-info-text); }
         .tree-root, .tree-branch { list-style: none; margin: 0; padding-left: 0; }
         .tree-item { margin: 2px 0; }
         .tree-folder { margin: 0; }
@@ -314,8 +367,10 @@ if ($route === 'admin') {
         .tree-folder-icon, .tree-file-icon { color: var(--sf-muted); width: 14px; text-align: center; }
         .tree-branch { margin-left: 8px; padding-left: 10px; border-left: 1px solid var(--sf-border); }
         .tree-note-button { display: inline-flex; align-items: center; gap: 6px; width: 100%; text-align: left; border-radius: 4px; padding: 2px 4px; }
+        .tree-note-button[draggable="true"] { cursor: grab; }
         .tree-note-button:hover, .tree-folder > summary:hover { background: color-mix(in srgb, var(--sf-tag-bg) 55%, transparent); }
         .tree-note-button.is-active { background: color-mix(in srgb, var(--sf-tag-bg) 85%, transparent); font-weight: 600; }
+        .tree-drop-zone.is-drop-target, #tree.tree-drop-target { background: color-mix(in srgb, var(--sf-link) 18%, transparent); outline: 1px dashed var(--sf-link); border-radius: 4px; }
         /* Full-viewport app layout */
         #appGrid { flex: 1; min-height: 0; grid-template-rows: 1fr; overflow: hidden; align-items: stretch; }
         #editorAside { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
@@ -424,8 +479,8 @@ if ($route === 'admin') {
         </div>
     </header>
 
-    <?php if ($message): ?><div class="mb-3 p-2 bg-emerald-100 border border-emerald-300 rounded"><?= htmlspecialchars($message) ?></div><?php endif; ?>
-    <?php if ($error): ?><div class="mb-3 p-2 bg-rose-100 border border-rose-300 rounded"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+    <?php if ($message): ?><div class="mb-3 p-2 rounded status-banner status-banner-success"><?= htmlspecialchars($message) ?></div><?php endif; ?>
+    <?php if ($error): ?><div class="mb-3 p-2 rounded status-banner status-banner-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 
     <?php if ($route === 'login' || $route === 'register'): ?>
         <div class="max-w-md mx-auto theme-panel rounded shadow p-4">
@@ -464,7 +519,7 @@ if ($route === 'admin') {
         </div>
 
     <?php elseif ($route === 'admin'): ?>
-        <?php $adminMsg = $_GET['msg'] ?? null; if ($adminMsg): ?><div class="mb-3 p-2 bg-indigo-100 border border-indigo-300 rounded"><?= htmlspecialchars($adminMsg) ?></div><?php endif; ?>
+        <?php $adminMsg = $_GET['msg'] ?? null; if ($adminMsg): ?><div class="mb-3 p-2 rounded status-banner status-banner-info"><?= htmlspecialchars($adminMsg) ?></div><?php endif; ?>
         <?php $users = read_users(); ?>
         <div class="theme-panel rounded shadow p-4">
             <h2 class="text-xl font-semibold mb-3">Admin Panel</h2>
@@ -561,19 +616,22 @@ if ($route === 'admin') {
                 <div class="flex gap-2 mt-2 flex-shrink-0 items-center">
                     <button id="saveBtn" class="save-idle text-white rounded px-3 py-2 text-sm">Save Now</button>
                     <span id="activeNote" class="text-sm theme-muted truncate"></span>
+                    <span id="lastSavedAt" class="text-xs theme-muted whitespace-nowrap"></span>
                 </div>
             </main>
         </div>
         <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
-            const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich', isDirty: false };
+            const state = { activeNote: '', editor: null, autosaveTimer: null, activeTab: 'rich', isDirty: false, lastSavedAt: null };
             const csrfToken = <?= json_encode($csrfToken) ?>;
             const TREE_NOTE_SELECTOR = 'button[data-note]';
             // Approximate pixel offset (header + search bar + tab bar + save row + padding) used
             // to compute an initial pixel height for Vditor before ResizeObserver takes over.
             const VDITOR_HEIGHT_OFFSET = 250;
             const AUTOSAVE_DEBOUNCE_MS = 1200;
+            const LAST_SAVED_TIMEZONE = 'America/Phoenix';
+            const LAST_SAVED_LABEL = 'MST';
             let treeFiles = [];
             try {
                 treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
@@ -654,18 +712,22 @@ if ($route === 'admin') {
                 return left.localeCompare(right, 'en', { sensitivity: 'base' });
             }
 
-            function renderTreeNode(node, container) {
+            function renderTreeNode(node, container, parentFolder = '') {
                 Array.from(node.folders.entries())
                     .sort(([a], [b]) => caseInsensitiveCompare(a, b))
                     .forEach(([folderName, folderNode]) => {
+                        const folderPath = parentFolder ? `${parentFolder}/${folderName}` : folderName;
                         const item = document.createElement('li');
                         item.className = 'tree-item';
 
                         const details = document.createElement('details');
                         details.className = 'tree-folder';
+                        details.dataset.folderPath = folderPath;
                         details.open = true;
 
                         const summary = document.createElement('summary');
+                        summary.className = 'tree-drop-zone';
+                        summary.dataset.dropFolder = folderPath;
                         const caret = document.createElement('span');
                         caret.className = 'tree-caret';
                         const folderIcon = document.createElement('span');
@@ -678,7 +740,7 @@ if ($route === 'admin') {
 
                         const branch = document.createElement('ul');
                         branch.className = 'tree-branch';
-                        renderTreeNode(folderNode, branch);
+                        renderTreeNode(folderNode, branch, folderPath);
                         details.appendChild(branch);
                         item.appendChild(details);
                         container.appendChild(item);
@@ -693,6 +755,7 @@ if ($route === 'admin') {
                         const btn = document.createElement('button');
                         btn.className = 'tree-note-button';
                         btn.dataset.note = file.path;
+                        btn.draggable = true;
 
                         const fileIcon = document.createElement('span');
                         fileIcon.className = 'tree-file-icon';
@@ -710,6 +773,7 @@ if ($route === 'admin') {
             function renderTree(paths) {
                 const tree = document.getElementById('tree');
                 tree.innerHTML = '';
+                tree.classList.remove('tree-drop-target');
                 if (!paths.length) {
                     const empty = document.createElement('li');
                     empty.className = 'theme-muted';
@@ -718,7 +782,7 @@ if ($route === 'admin') {
                     return;
                 }
                 const root = buildTree(paths);
-                renderTreeNode(root, tree);
+                renderTreeNode(root, tree, '');
             }
 
             function highlightActiveTreeNote() {
@@ -734,6 +798,28 @@ if ($route === 'admin') {
                         }
                     }
                 });
+            }
+
+            function formatMstTimestamp(isoValue) {
+                if (!isoValue) return '';
+                const date = new Date(isoValue);
+                if (Number.isNaN(date.getTime())) return '';
+                const formatted = new Intl.DateTimeFormat('en-US', {
+                    timeZone: LAST_SAVED_TIMEZONE,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                }).format(date);
+                return `Last saved (${LAST_SAVED_LABEL}): ${formatted}`;
+            }
+
+            function updateLastSavedLabel() {
+                const el = document.getElementById('lastSavedAt');
+                el.textContent = formatMstTimestamp(state.lastSavedAt);
             }
 
             async function loadTags() {
@@ -793,15 +879,26 @@ if ($route === 'admin') {
             async function openNote(path) {
                 state.activeNote = path;
                 document.getElementById('activeNote').textContent = path;
+                state.lastSavedAt = null;
+                updateLastSavedLabel();
                 highlightActiveTreeNote();
                 const out = await api({ action: 'load', path });
+                if (!out.ok) return;
                 contentSet(out.content || '');
+                state.lastSavedAt = out.last_saved_at || null;
+                updateLastSavedLabel();
                 markClean();
             }
 
             async function saveCurrent() {
                 if (!state.activeNote) return;
-                await api({ action: 'save', path: state.activeNote, content: contentGet() });
+                const out = await api({ action: 'save', path: state.activeNote, content: contentGet() });
+                if (!out.ok) {
+                    alert(out.error || 'Save failed.');
+                    return;
+                }
+                state.lastSavedAt = out.last_saved_at || null;
+                updateLastSavedLabel();
                 markClean();
             }
 
@@ -838,7 +935,110 @@ if ($route === 'admin') {
                 openNote(target.dataset.note);
             });
 
+            let dragNotePath = '';
+
+            function parentFolder(path) {
+                const index = path.lastIndexOf('/');
+                return index === -1 ? '' : path.slice(0, index);
+            }
+
+            function clearTreeDropTargets() {
+                document.getElementById('tree').classList.remove('tree-drop-target');
+                document.querySelectorAll('.tree-drop-zone.is-drop-target').forEach((el) => el.classList.remove('is-drop-target'));
+            }
+
+            function getDropFolderFromTarget(target) {
+                const summary = target.closest('.tree-drop-zone');
+                if (summary) return summary.dataset.dropFolder || '';
+                const details = target.closest('details.tree-folder');
+                if (details) return details.dataset.folderPath || '';
+                return '';
+            }
+
+            function paintDropTarget(target) {
+                clearTreeDropTargets();
+                const summary = target.closest('.tree-drop-zone');
+                if (summary) {
+                    summary.classList.add('is-drop-target');
+                    return;
+                }
+                document.getElementById('tree').classList.add('tree-drop-target');
+            }
+
+            async function moveTreeNote(fromPath, destinationFolder) {
+                if (!fromPath) return;
+                if (state.activeNote === fromPath && state.isDirty) {
+                    await saveCurrent();
+                    if (state.isDirty) {
+                        alert('Move canceled because the note could not be saved.');
+                        return;
+                    }
+                }
+
+                const out = await api({ action: 'move', from: fromPath, to_folder: destinationFolder });
+                if (!out.ok) {
+                    alert(out.error || 'Move failed.');
+                    return;
+                }
+
+                treeFiles = out.structure?.files || [];
+                renderTree(treeFiles);
+                populateFolderList(treeFiles);
+
+                if (state.activeNote === fromPath) {
+                    state.activeNote = out.moved_path || fromPath;
+                    document.getElementById('activeNote').textContent = state.activeNote;
+                    state.lastSavedAt = out.last_saved_at || null;
+                    updateLastSavedLabel();
+                }
+                highlightActiveTreeNote();
+            }
+
+            document.getElementById('tree').addEventListener('dragstart', (event) => {
+                const noteButton = event.target.closest(TREE_NOTE_SELECTOR);
+                if (!noteButton) return;
+                dragNotePath = noteButton.dataset.note || '';
+                if (event.dataTransfer) {
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', dragNotePath);
+                }
+            });
+
+            document.getElementById('tree').addEventListener('dragover', (event) => {
+                const fromPath = dragNotePath;
+                if (!fromPath) return;
+                const dropFolder = getDropFolderFromTarget(event.target);
+                if (parentFolder(fromPath) === dropFolder) return;
+                event.preventDefault();
+                if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+                paintDropTarget(event.target);
+            });
+
+            document.getElementById('tree').addEventListener('dragleave', (event) => {
+                if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) {
+                    clearTreeDropTargets();
+                }
+            });
+
+            document.getElementById('tree').addEventListener('drop', async (event) => {
+                const fromPath = dragNotePath;
+                dragNotePath = '';
+                clearTreeDropTargets();
+                if (!fromPath) return;
+                const dropFolder = getDropFolderFromTarget(event.target);
+                if (parentFolder(fromPath) === dropFolder) return;
+                event.preventDefault();
+                await moveTreeNote(fromPath, dropFolder);
+            });
+
+            document.getElementById('tree').addEventListener('dragend', () => {
+                dragNotePath = '';
+                clearTreeDropTargets();
+            });
+
             function populateFolderList(paths) {
+                const datalist = document.getElementById('folderList');
+                if (!datalist) return;
                 const folders = new Set();
                 paths.forEach((path) => {
                     const parts = path.split('/').filter(Boolean);
@@ -846,7 +1046,7 @@ if ($route === 'admin') {
                         folders.add(parts.slice(0, i).join('/'));
                     }
                 });
-                const datalist = document.getElementById('folderList');
+                datalist.innerHTML = '';
                 Array.from(folders).sort((a, b) => caseInsensitiveCompare(a, b)).forEach((folder) => {
                     const opt = document.createElement('option');
                     opt.value = folder;
@@ -926,6 +1126,7 @@ if ($route === 'admin') {
                 populateFolderList(treeFiles);
                 setTimeout(wireAutosave, 500);
                 updateSaveButton();
+                updateLastSavedLabel();
                 await loadTags();
             })();
         </script>
