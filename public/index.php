@@ -464,7 +464,7 @@ if ($route === 'admin') {
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null };
             const csrfToken = <?= json_encode($csrfToken) ?>;
-            const treeFiles = <?= json_encode($files, JSON_UNESCAPED_SLASHES) ?>;
+            const treeFiles = <?= json_encode($files, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
             async function api(payload) {
                 const body = new URLSearchParams({ ...payload, csrf: csrfToken });
@@ -504,9 +504,9 @@ if ($route === 'admin') {
             }
 
             function renderTreeNode(node, container) {
-                const compareLocaleInsensitive = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
+                const compareIgnoreCase = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
                 Array.from(node.folders.entries())
-                    .sort(([a], [b]) => compareLocaleInsensitive(a, b))
+                    .sort(([a], [b]) => compareIgnoreCase(a, b))
                     .forEach(([folderName, folderNode]) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
@@ -535,7 +535,7 @@ if ($route === 'admin') {
                     });
 
                 node.files
-                    .sort((a, b) => compareLocaleInsensitive(a.name, b.name))
+                    .sort((a, b) => compareIgnoreCase(a.name, b.name))
                     .forEach((file) => {
                         const item = document.createElement('li');
                         item.className = 'tree-item';
