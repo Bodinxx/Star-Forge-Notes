@@ -20,13 +20,15 @@ function app_bootstrap(): void
 
     foreach ([DATA_PATH, VAULTS_PATH] as $dir) {
         if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+            mkdir($dir, 0700, true);
         }
     }
 
     if (!is_file(USERS_FILE)) {
         file_put_contents(USERS_FILE, "[]\n", LOCK_EX);
     }
+
+    csrf_token();
 }
 
 function read_users(): array
@@ -44,6 +46,21 @@ function write_users(array $users): void
 function current_user(): ?array
 {
     return $_SESSION['user'] ?? null;
+}
+
+function csrf_token(): string
+{
+    if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function verify_csrf(?string $token): void
+{
+    if (!is_string($token) || !hash_equals(csrf_token(), $token)) {
+        throw new RuntimeException('Invalid CSRF token.');
+    }
 }
 
 function require_auth(): void
@@ -131,7 +148,7 @@ function ensure_vault(string $userId): string
 {
     $vault = user_vault_path($userId);
     if (!is_dir($vault)) {
-        mkdir($vault, 0755, true);
+        mkdir($vault, 0700, true);
     }
 
     $structureFile = $vault . '/structure.json';
@@ -196,7 +213,7 @@ function create_note(string $userId, string $notePath): ?string
 
     $dir = dirname($fullPath);
     if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+        mkdir($dir, 0700, true);
     }
 
     file_put_contents($fullPath, "---\ntags: []\n---\n\n# " . basename($notePath) . "\n", LOCK_EX);
@@ -212,7 +229,7 @@ function save_note(string $userId, string $notePath, string $content): ?string
     $targetDir = realpath(dirname($fullPath));
 
     if ($targetDir === false) {
-        mkdir(dirname($fullPath), 0755, true);
+        mkdir(dirname($fullPath), 0700, true);
         $targetDir = realpath(dirname($fullPath));
     }
 

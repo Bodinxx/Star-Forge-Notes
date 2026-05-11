@@ -9,6 +9,7 @@ $route = $_GET['route'] ?? 'app';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $message = null;
 $error = null;
+$csrfToken = csrf_token();
 
 if ($route === 'logout') {
     session_destroy();
@@ -17,23 +18,40 @@ if ($route === 'logout') {
 }
 
 if ($route === 'login' && $method === 'POST') {
-    $error = login_user($_POST['username'] ?? '', $_POST['password'] ?? '');
-    if ($error === null) {
-        header('Location: ?route=app');
-        exit;
+    try {
+        verify_csrf($_POST['csrf'] ?? null);
+        $error = login_user($_POST['username'] ?? '', $_POST['password'] ?? '');
+        if ($error === null) {
+            header('Location: ?route=app');
+            exit;
+        }
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
     }
 }
 
 if ($route === 'register' && $method === 'POST') {
-    $error = request_account($_POST['username'] ?? '', $_POST['password'] ?? '');
-    if ($error === null) {
-        $message = 'Account requested. Wait for admin approval.';
-        $route = 'login';
+    try {
+        verify_csrf($_POST['csrf'] ?? null);
+        $error = request_account($_POST['username'] ?? '', $_POST['password'] ?? '');
+        if ($error === null) {
+            $message = 'Account requested. Wait for admin approval.';
+            $route = 'login';
+        }
+    } catch (Throwable $e) {
+        $error = $e->getMessage();
     }
 }
 
 if ($route === 'admin-action' && $method === 'POST') {
     require_admin();
+    try {
+        verify_csrf($_POST['csrf'] ?? null);
+    } catch (Throwable $e) {
+        header('Location: ?route=admin&msg=' . urlencode($e->getMessage()));
+        exit;
+    }
+
     $users = read_users();
     $userId = trim($_POST['user_id'] ?? '');
     $action = trim($_POST['action'] ?? '');
@@ -85,6 +103,8 @@ if ($route === 'api' && $method === 'POST') {
     $action = $_POST['action'] ?? '';
 
     try {
+        verify_csrf($_POST['csrf'] ?? null);
+
         if ($action === 'create') {
             $err = create_note($user['id'], $_POST['path'] ?? '');
             if ($err) {
@@ -167,6 +187,7 @@ if ($route === 'admin') {
             <?php if ($route === 'login'): ?>
                 <h2 class="text-xl font-semibold mb-3">Login</h2>
                 <form method="post" action="?route=login" class="space-y-2">
+                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input class="w-full border rounded p-2" name="username" placeholder="Username" required>
                     <input class="w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
                     <button class="w-full bg-indigo-600 text-white rounded p-2">Login</button>
@@ -176,6 +197,7 @@ if ($route === 'admin') {
             <?php else: ?>
                 <h2 class="text-xl font-semibold mb-3">Request Account</h2>
                 <form method="post" action="?route=register" class="space-y-2">
+                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input class="w-full border rounded p-2" name="username" placeholder="Username" required>
                     <input class="w-full border rounded p-2" type="password" name="password" placeholder="Password" required>
                     <button class="w-full bg-indigo-600 text-white rounded p-2">Submit Request</button>
@@ -203,6 +225,7 @@ if ($route === 'admin') {
                                 <?php if (($u['id'] ?? '') !== 'admin'): ?>
                                 <form method="post" action="?route=admin-action" class="inline-flex gap-1">
                                     <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['id']) ?>">
+                                    <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
                                     <button class="px-2 py-1 bg-emerald-600 text-white rounded" name="action" value="approve" type="submit">Approve</button>
                                     <button class="px-2 py-1 bg-amber-600 text-white rounded" name="action" value="disable" type="submit">Disable</button>
                                     <button class="px-2 py-1 bg-rose-600 text-white rounded" name="action" value="delete" type="submit" onclick="return confirm('Delete user and vault?')">Delete</button>
@@ -256,9 +279,10 @@ if ($route === 'admin') {
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null };
+            const csrfToken = <?= json_encode($csrfToken) ?>;
 
             async function api(payload) {
-                const body = new URLSearchParams(payload);
+                const body = new URLSearchParams({ ...payload, csrf: csrfToken });
                 const res = await fetch('?route=api', { method: 'POST', body });
                 return res.json();
             }
