@@ -54,7 +54,10 @@ if ($route === 'change-password' && $method === 'POST') {
             throw new RuntimeException('Unable to update password.');
         }
 
-        $_SESSION['user']['force_password_change'] = false;
+        $updatedRecord = find_user_by_id($record['id']);
+        if ($updatedRecord) {
+            set_session_user($updatedRecord);
+        }
         $message = 'Password updated.';
         $route = 'app';
     } catch (Throwable $e) {
@@ -105,8 +108,8 @@ if ($route === 'admin-action' && $method === 'POST') {
             $u['__delete'] = true;
             $message = "Deleted {$u['username']}";
         } elseif ($action === 'reset-password') {
-            if (strlen($defaultPassword) < 4) {
-                $adminActionError = 'Default password must be at least 4 characters.';
+            if (strlen($defaultPassword) < 8) {
+                $adminActionError = 'Default password must be at least 8 characters.';
             } else {
                 $u['password_hash'] = password_hash($defaultPassword, PASSWORD_DEFAULT);
                 $u['force_password_change'] = true;

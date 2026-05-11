@@ -53,6 +53,16 @@ function is_password_change_required(): bool
     return (bool) (current_user()['force_password_change'] ?? false);
 }
 
+function set_session_user(array $user): void
+{
+    $_SESSION['user'] = [
+        'id' => $user['id'],
+        'username' => $user['username'],
+        'role' => $user['role'] ?? 'user',
+        'force_password_change' => (bool) ($user['force_password_change'] ?? false),
+    ];
+}
+
 function csrf_token(): string
 {
     if (!isset($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
@@ -140,12 +150,7 @@ function login_user(string $username, string $password): ?string
         return 'Your account is pending admin approval.';
     }
 
-    $_SESSION['user'] = [
-        'id' => $user['id'],
-        'username' => $user['username'],
-        'role' => $user['role'] ?? 'user',
-        'force_password_change' => (bool) ($user['force_password_change'] ?? false),
-    ];
+    set_session_user($user);
 
     ensure_vault($user['id']);
     return null;
