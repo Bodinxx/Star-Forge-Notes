@@ -258,7 +258,7 @@ if ($route === 'admin') {
         :root[data-theme="dark-plum"] { --sf-bg: #2e1065; --sf-panel: #3b0764; --sf-text: #f5d0fe; --sf-muted: #e879f9; --sf-border: #a855f7; --sf-input-bg: #2e1065; --sf-tag-bg: #581c87; --sf-tag-text: #f5d0fe; --sf-link: #c4b5fd; color-scheme: dark; }
         :root[data-theme="dark-ocean"] { --sf-bg: #082f49; --sf-panel: #0c4a6e; --sf-text: #e0f2fe; --sf-muted: #7dd3fc; --sf-border: #0284c7; --sf-input-bg: #082f49; --sf-tag-bg: #075985; --sf-tag-text: #e0f2fe; --sf-link: #93c5fd; color-scheme: dark; }
         body.theme-page { background: var(--sf-bg); color: var(--sf-text); }
-        .theme-container { min-height: calc(100vh - 40px); }
+        .theme-container { --sf-shell-padding: 20px; min-height: calc(100vh - (var(--sf-shell-padding) * 2)); padding: var(--sf-shell-padding); }
         .theme-panel { background: var(--sf-panel); color: var(--sf-text); border: 1px solid var(--sf-border); }
         .theme-input { background: var(--sf-input-bg); color: var(--sf-text); border-color: var(--sf-border); }
         .theme-muted { color: var(--sf-muted); }
@@ -268,7 +268,7 @@ if ($route === 'admin') {
     </style>
 </head>
 <body class="theme-page min-h-screen">
-<div class="theme-container w-full p-5">
+<div class="theme-container w-full">
     <header class="mb-4 flex items-center justify-between">
         <h1 class="text-2xl font-bold">Star-Forge Notes (Draft)</h1>
         <div class="flex gap-2 items-center flex-wrap justify-end">
@@ -526,7 +526,8 @@ if ($route === 'admin') {
 </div>
 <script>
     (() => {
-        const config = window.sfThemeConfig || { defaultTheme: 'light-slate', themes: ['light-slate'] };
+        const config = window.sfThemeConfig;
+        if (!config || !Array.isArray(config.themes) || typeof config.defaultTheme !== 'string') return;
         const themes = new Set(config.themes);
         const defaultTheme = config.defaultTheme;
 
