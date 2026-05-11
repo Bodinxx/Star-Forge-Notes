@@ -299,7 +299,7 @@ if ($route === 'admin') {
                                 <form method="post" action="?route=admin-action" class="inline-flex gap-1 mt-1">
                                     <input type="hidden" name="user_id" value="<?= htmlspecialchars($u['id']) ?>">
                                     <input type="hidden" name="csrf" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input class="border rounded px-2 py-1" type="text" name="default_password" placeholder="Default password" required>
+                                    <input class="border rounded px-2 py-1" type="password" name="default_password" placeholder="Default password" required>
                                     <button class="px-2 py-1 bg-indigo-600 text-white rounded" name="action" value="reset-password" type="submit">Reset Password</button>
                                 </form>
                                 <?php endif; ?>
