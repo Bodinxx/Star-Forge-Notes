@@ -488,9 +488,9 @@ if ($route === 'admin') {
                     <div class="mt-3 space-y-1 flex-shrink-0">
                         <datalist id="folderList"></datalist>
                         <div class="flex items-center gap-1 flex-wrap">
-                            <input id="newFolder" list="folderList" class="theme-input border rounded p-2 text-sm flex-1 min-w-0" style="min-width:80px" placeholder="Folder (optional)">
+                            <input id="newFolder" list="folderList" class="theme-input border rounded p-2 text-sm flex-1" style="min-width:80px" placeholder="Folder (optional)">
                             <span class="text-xs theme-muted">/</span>
-                            <input id="newFileName" class="theme-input border rounded p-2 text-sm flex-1 min-w-0" style="min-width:60px" placeholder="File name">
+                            <input id="newFileName" class="theme-input border rounded p-2 text-sm flex-1" style="min-width:60px" placeholder="File name">
                             <span class="text-xs theme-muted whitespace-nowrap">.md</span>
                         </div>
                         <button id="createBtn" class="w-full bg-indigo-600 text-white rounded p-2 text-sm">Create Note</button>
