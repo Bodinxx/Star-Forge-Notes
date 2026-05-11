@@ -460,11 +460,12 @@ if ($route === 'admin') {
                 <button id="saveBtn" class="mt-2 bg-emerald-600 text-white rounded px-3 py-2 text-sm">Save Now</button>
             </main>
         </div>
+        <script id="tree-files-data" type="application/json"><?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
         <script src="https://unpkg.com/vditor/dist/index.min.js"></script>
         <script>
             const state = { activeNote: '', editor: null, autosaveTimer: null };
             const csrfToken = <?= json_encode($csrfToken) ?>;
-            const treeFiles = <?= json_encode($files, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const treeFiles = JSON.parse(document.getElementById('tree-files-data')?.textContent || '[]');
 
             async function api(payload) {
                 const body = new URLSearchParams({ ...payload, csrf: csrfToken });
@@ -503,8 +504,11 @@ if ($route === 'admin') {
                 return root;
             }
 
+            function caseInsensitiveCompare(left, right) {
+                return left.localeCompare(right, 'en', { sensitivity: 'base' });
+            }
+
             function renderTreeNode(node, container) {
-                const caseInsensitiveCompare = (left, right) => left.localeCompare(right, 'en', { sensitivity: 'base' });
                 Array.from(node.folders.entries())
                     .sort(([a], [b]) => caseInsensitiveCompare(a, b))
                     .forEach(([folderName, folderNode]) => {
