@@ -170,7 +170,7 @@ if ($route === 'api' && $method === 'POST') {
             echo json_encode([
                 'ok' => $err === null,
                 'error' => $err,
-                'last_saved_at' => $err === null ? note_last_saved_at($user['id'], $notePath) : null,
+                'last_saved_at' => $err === null ? note_last_saved_at_utc($user['id'], $notePath) : null,
             ]);
             exit;
         }
@@ -181,7 +181,7 @@ if ($route === 'api' && $method === 'POST') {
             echo json_encode([
                 'ok' => $content !== null,
                 'content' => $content,
-                'last_saved_at' => $content !== null ? note_last_saved_at($user['id'], $notePath) : null,
+                'last_saved_at' => $content !== null ? note_last_saved_at_utc($user['id'], $notePath) : null,
             ]);
             exit;
         }
@@ -195,7 +195,7 @@ if ($route === 'api' && $method === 'POST') {
                 'ok' => $err === null,
                 'error' => $err,
                 'moved_path' => $err === null ? $movedPath : null,
-                'last_saved_at' => $err === null ? note_last_saved_at($user['id'], $movedPath) : null,
+                'last_saved_at' => $err === null ? note_last_saved_at_utc($user['id'], $movedPath) : null,
                 'structure' => $err === null ? get_structure($user['id']) : null,
             ]);
             exit;
@@ -1002,7 +1002,7 @@ if ($route === 'admin') {
             });
 
             document.getElementById('tree').addEventListener('dragover', (event) => {
-                const fromPath = dragNotePath || event.dataTransfer?.getData('text/plain') || '';
+                const fromPath = dragNotePath;
                 if (!fromPath) return;
                 const dropFolder = getDropFolderFromTarget(event.target);
                 if (parentFolder(fromPath) === dropFolder) return;
@@ -1018,7 +1018,7 @@ if ($route === 'admin') {
             });
 
             document.getElementById('tree').addEventListener('drop', async (event) => {
-                const fromPath = dragNotePath || event.dataTransfer?.getData('text/plain') || '';
+                const fromPath = dragNotePath;
                 dragNotePath = '';
                 clearTreeDropTargets();
                 if (!fromPath) return;

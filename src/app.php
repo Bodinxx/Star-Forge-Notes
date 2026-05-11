@@ -288,7 +288,7 @@ function save_note(string $userId, string $notePath, string $content): ?string
     return null;
 }
 
-function note_last_saved_at(string $userId, string $notePath): ?string
+function note_last_saved_at_utc(string $userId, string $notePath): ?string
 {
     $fullPath = note_absolute_path($userId, $notePath);
     if (!is_file($fullPath)) {
